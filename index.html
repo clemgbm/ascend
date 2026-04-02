@@ -4660,7 +4660,9 @@ function delCampaign(id){bState.campaigns=bState.campaigns.filter(c=>c.id!==id);
 // Analytics
 function saveMetric(){const date=document.getElementById('m-date').value||todayKey();const existing=bState.metrics.findIndex(m=>m.date===date);const metric={date,visitors:parseInt(document.getElementById('m-visitors').value)||0,orders:parseInt(document.getElementById('m-orders').value)||0,revenue:parseFloat(document.getElementById('m-revenue').value)||0,adspend:parseFloat(document.getElementById('m-adspend').value)||0};if(existing>=0)bState.metrics[existing]={...bState.metrics[existing],...metric};else bState.metrics.push({id:'m'+Date.now(),...metric});saveB();closeModal('modal-add-metric');renderAnalytics();toast('Métriques enregistrées ✓','var(--g)');}
 function renderAnalytics(){
-  const C=getCurrency();const last7=getLast(7);const recent=bState.metrics.filter(m=>last7.includes(m.date));const totalRev=recent.reduce((s,m)=>s+m.revenue,0),totalOrders=recent.reduce((s,m)=>s+m.orders,0),totalVisitors=recent.reduce((s,m)=>s+m.visitors,0),totalAds=recent.reduce((s,m)=>s+m.adspend,0);const cvr=totalVisitors>0?((totalOrders/totalVisitors)*100).toFixed(2):0;
+  const hasShopify=!!localStorage.getItem('gabos_shopify_token');
+  const dynDays=hasShopify?30:7;
+  const C=getCurrency();const dynDates=getLast(dynDays);const recent=bState.metrics.filter(m=>dynDates.includes(m.date));const totalRev=recent.reduce((s,m)=>s+m.revenue,0),totalOrders=recent.reduce((s,m)=>s+m.orders,0),totalVisitors=recent.reduce((s,m)=>s+m.visitors,0),totalAds=recent.reduce((s,m)=>s+m.adspend,0);const cvr=totalVisitors>0?((totalOrders/totalVisitors)*100).toFixed(2):0;
   document.getElementById('analytics-kpis').innerHTML=`<div class="kpi-card" style="--kpi-c:var(--g)"><div class="kpi-lbl">CA 7j</div><div class="kpi-val" id="ankpi-ca" style="color:var(--g)">0${C}</div></div><div class="kpi-card" style="--kpi-c:var(--p)"><div class="kpi-lbl">Commandes</div><div class="kpi-val" id="ankpi-orders" style="color:var(--p)">0</div></div><div class="kpi-card" style="--kpi-c:var(--blue)"><div class="kpi-lbl">Visiteurs</div><div class="kpi-val" id="ankpi-vis" style="color:var(--blue);font-size:1.4rem">0</div></div><div class="kpi-card" style="--kpi-c:var(--gold)"><div class="kpi-lbl">CVR</div><div class="kpi-val" id="ankpi-cvr" style="color:var(--gold)">0%</div></div>`;
   requestAnimationFrame(()=>{
     const el=id=>document.getElementById(id);
@@ -4670,7 +4672,8 @@ function renderAnalytics(){
     if(el('ankpi-cvr'))    countUp(el('ankpi-cvr'),    parseFloat(cvr)||0,   {decimals:1, suffix:'%'});
   });
   document.getElementById('funnel').innerHTML=totalVisitors?`<div style="padding:8px 0"><div style="background:rgba(56,189,248,.2);border-radius:6px;padding:8px 12px;margin-bottom:6px;font-size:.82rem"><svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle"><circle cx="7" cy="7" r="3"/><circle cx="13" cy="7" r="3"/><path d="M1 17c0-3 2.7-5 6-5M13 12c3.3 0 6 2 6 5"/><path d="M7 12c3.3 0 6 2 6 5H1c0-3 2.7-5 6-5z"/></svg> ${totalVisitors} visiteurs</div><div style="background:rgba(124,92,252,.2);border-radius:6px;padding:8px 12px;margin-bottom:6px;font-size:.82rem"><svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle"><path d="M2 3h2l2.5 9h9L18 6H6"/><circle cx="8" cy="17" r="1.5"/><circle cx="15" cy="17" r="1.5"/></svg> ${totalOrders} commandes (${cvr}%)</div><div style="background:rgba(0,229,160,.2);border-radius:6px;padding:8px 12px;font-size:.82rem"><svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle"><circle cx="10" cy="10" r="7"/><path d="M10 6v1m0 6v1M8 9.5h3a1 1 0 010 2H9a1 1 0 000 2h3"/></svg> ${totalRev.toFixed(0)}${C} revenus</div></div>`:'<div class="empty-state">Ajoute des métriques</div>';
-  document.getElementById('metrics-history').innerHTML=bState.metrics.slice(-7).reverse().map(m=>`<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--b0);font-size:.8rem"><span style="color:var(--t1)">${fmtDate(m.date)}</span><span style="color:var(--g)">${m.revenue.toFixed(0)}${C}</span><span class="tag tag-g">${m.orders} cmd</span></div>`).join('')||'<div class="empty-state">Aucune métrique</div>';
+  const allHistMetrics=bState.metrics.filter(m=>dynDates.includes(m.date)).sort((a,b)=>b.date>a.date?1:-1);
+  document.getElementById('metrics-history').innerHTML=allHistMetrics.slice(0,30).map(m=>`<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--b0);font-size:.8rem"><span style="color:var(--t1)">${fmtDate(m.date)}</span><span style="color:var(--g)">${m.revenue.toFixed(0)}${C}</span><span class="tag tag-g">${m.orders} cmd</span></div>`).join('')||'<div class="empty-state">Aucune métrique</div>';
 }
 
 // Tasks
@@ -4940,6 +4943,9 @@ function renderIntDetailData(key){if(key==='shopify')fetchShopifyData(true);else
 function syncAllIntegrations(){fetchShopifyData();fetchMetaData();fetchTikTokData();toast('Sync lancée...','var(--p)');}
 function initIntegrations(){renderCustomIntCards();if(localStorage.getItem('gabos_shopify_token'))fetchShopifyData();if(localStorage.getItem('gabos_meta_token'))fetchMetaData();if(localStorage.getItem('gabos_tiktok_token'))fetchTikTokData();}
 
+// Cache Shopify data globally so all sections can use it
+let _shopifyCache = null;
+
 async function fetchShopifyData(fromDetail=false){
   const token=localStorage.getItem('gabos_shopify_token');
   let store=localStorage.getItem('gabos_shopify_store')||'';
@@ -4948,45 +4954,141 @@ async function fetchShopifyData(fromDetail=false){
   if(!store.includes('.myshopify.com'))store=store+'.myshopify.com';
   updateCardStatus('shopify',false,'Chargement...');
 
-  // Proxy Vercel — même domaine que l'app
   const proxyBase=window.location.origin+'/api/shopify';
-  const ordersUrl=`${proxyBase}?store=${encodeURIComponent(store)}&token=${encodeURIComponent(token)}&endpoint=orders`;
-  const productsUrl=`${proxyBase}?store=${encodeURIComponent(store)}&token=${encodeURIComponent(token)}&endpoint=products`;
+  const p=s=>`store=${encodeURIComponent(store)}&token=${encodeURIComponent(token)}&endpoint=${s}`;
+  const ordersUrl=`${proxyBase}?${p('orders')}&days=30`;
+  const historyUrl=`${proxyBase}?${p('orders_history')}&days=365`;
+  const productsUrl=`${proxyBase}?${p('products')}`;
 
   try{
-    const [rOrders, rProducts]=await Promise.all([fetch(ordersUrl), fetch(productsUrl)]);
+    const [rOrders, rHistory, rProducts]=await Promise.all([fetch(ordersUrl), fetch(historyUrl), fetch(productsUrl)]);
     if(!rOrders.ok){const e=await rOrders.json();throw new Error(e.error||'HTTP '+rOrders.status);}
-    const dataOrders=await rOrders.json();
-    const orders=dataOrders.orders||[];
     const C=getCurrency();
-    const rev=orders.filter(o=>o.financial_status==='paid').reduce((s,o)=>s+parseFloat(o.total_price||0),0);
-    const totalOrders=orders.length;
-    const avgOrder=totalOrders>0?(rev/totalOrders).toFixed(0):0;
-    const refunds=orders.filter(o=>o.financial_status==='refunded').length;
-    const pending=orders.filter(o=>o.financial_status==='pending').length;
-    // Products
-    let productsHtml='';
-    if(rProducts.ok){
-      const dp=await rProducts.json();
-      const prods=(dp.products||[]).slice(0,5);
-      productsHtml=prods.length?`<div style="margin-top:12px"><div style="font-size:.62rem;text-transform:uppercase;letter-spacing:1.2px;color:var(--t2);font-weight:700;margin-bottom:6px">Produits récents</div>${prods.map(p=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--b0);font-size:.8rem"><span>${p.title}</span><span style="color:var(--g);font-family:'DM Mono',monospace">${parseFloat(p.variants?.[0]?.price||0).toFixed(2)}${C}</span></div>`).join('')}</div>`:'';
-    }
-    localStorage.setItem('gabos_shopify_rev',rev.toFixed(0));
-    localStorage.setItem('gabos_shopify_orders',totalOrders);
+    const orders30=(await rOrders.json()).orders||[];
+    const ordersAll=rHistory.ok?(await rHistory.json()).orders||[]:orders30;
+    const products=rProducts.ok?(await rProducts.json()).products||[]:[];
+
+    // ── Core KPIs ──
+    const paidOrders30=orders30.filter(o=>o.financial_status==='paid');
+    const rev30=paidOrders30.reduce((s,o)=>s+parseFloat(o.total_price||0),0);
+    const totalOrders30=orders30.length;
+    const avgOrder=totalOrders30>0?(rev30/totalOrders30).toFixed(0):0;
+    const refunds=orders30.filter(o=>o.financial_status==='refunded').length;
+
+    // ── History: group by day for up to 1 year ──
+    const dayMap={};
+    ordersAll.forEach(o=>{
+      const d=o.created_at?o.created_at.slice(0,10):null;
+      if(!d)return;
+      if(!dayMap[d])dayMap[d]={date:d,revenue:0,orders:0};
+      if(o.financial_status==='paid'||o.financial_status==='partially_paid'){
+        dayMap[d].revenue+=parseFloat(o.total_price||0);
+        dayMap[d].orders+=1;
+      }
+    });
+    const historyByDay=Object.values(dayMap).sort((a,b)=>a.date>b.date?1:-1);
+
+    // ── Total revenue all time ──
+    const revAll=ordersAll.filter(o=>o.financial_status==='paid'||o.financial_status==='partially_paid')
+      .reduce((s,o)=>s+parseFloat(o.total_price||0),0);
+
+    // ── Store in cache for other sections ──
+    _shopifyCache={orders30,ordersAll,products,rev30,revAll,totalOrders30,avgOrder,refunds,historyByDay,store,C};
+
+    localStorage.setItem('gabos_shopify_rev',rev30.toFixed(0));
+    localStorage.setItem('gabos_shopify_orders',totalOrders30);
     updateCardStatus('shopify',true);
+
+    // ── Inject into all Business sections ──
+    injectShopifyIntoCommand();
+    injectShopifyIntoFinance();
+    injectShopifyIntoProducts();
+    injectShopifyIntoAnalytics();
+
     if(currentIntegration==='shopify'||fromDetail){
       updateDetailBadge('shopify');
+      const productsHtml=products.length?`<div style="margin-top:12px"><div style="font-size:.62rem;text-transform:uppercase;letter-spacing:1.2px;color:var(--t2);font-weight:700;margin-bottom:6px">Produits</div>${products.slice(0,5).map(p=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--b0);font-size:.8rem"><span>${p.title}</span><span style="color:var(--g);font-family:'DM Mono',monospace">${parseFloat(p.variants?.[0]?.price||0).toFixed(2)}${C}</span></div>`).join('')}</div>`:'';
       document.getElementById('int-detail-data').innerHTML=`
         <div class="grid-4" style="margin-bottom:10px">
-          <div class="kpi-card" style="--kpi-c:var(--g)"><div class="kpi-lbl">CA 30j</div><div class="kpi-val" style="color:var(--g)">${rev.toFixed(0)}${C}</div></div>
-          <div class="kpi-card" style="--kpi-c:var(--p)"><div class="kpi-lbl">Commandes</div><div class="kpi-val" style="color:var(--p)">${totalOrders}</div></div>
+          <div class="kpi-card" style="--kpi-c:var(--g)"><div class="kpi-lbl">CA 30j</div><div class="kpi-val" style="color:var(--g)">${rev30.toFixed(0)}${C}</div></div>
+          <div class="kpi-card" style="--kpi-c:var(--p)"><div class="kpi-lbl">Commandes</div><div class="kpi-val" style="color:var(--p)">${totalOrders30}</div></div>
           <div class="kpi-card" style="--kpi-c:var(--blue)"><div class="kpi-lbl">Panier moyen</div><div class="kpi-val" style="color:var(--blue)">${avgOrder}${C}</div></div>
           <div class="kpi-card" style="--kpi-c:var(--red)"><div class="kpi-lbl">Remboursés</div><div class="kpi-val" style="color:var(--red)">${refunds}</div></div>
         </div>
         ${productsHtml}
-        <div style="font-size:.72rem;color:var(--t2);margin-top:8px">✓ ${store}</div>`;
+        <div style="font-size:.72rem;color:var(--t2);margin-top:8px">✓ ${store} · ${ordersAll.length} commandes sur 12 mois</div>`;
     }
   }catch(e){updateCardStatus('shopify',false,'Erreur');toast('Erreur Shopify — '+e.message,'var(--red)');}
+}
+
+function injectShopifyIntoCommand(){
+  if(!_shopifyCache)return;
+  const{rev30,revAll,totalOrders30,C}=_shopifyCache;
+  // Update CA Total and show Shopify badge
+  const elCa=document.getElementById('kpi-ca');
+  if(elCa){countUp(elCa,revAll,{decimals:0,suffix:C});}
+  // Show Shopify tag near CA
+  const az=document.getElementById('cmd-alert-zone');
+  if(az&&revAll>0)az.innerHTML=`<div class="alert" style="margin-bottom:12px;background:var(--go);border:1px solid rgba(0,229,160,.2)">🛍 Shopify connecté · CA 30j : <b>${rev30.toFixed(0)}${C}</b> · ${totalOrders30} commandes</div>`;
+}
+
+function injectShopifyIntoFinance(){
+  if(!_shopifyCache)return;
+  const{historyByDay,C}=_shopifyCache;
+  // Merge Shopify daily data into bState.transactions (as shopify_ prefixed, non-duplicate)
+  historyByDay.forEach(d=>{
+    const tid='shopify_'+d.date;
+    if(!bState.transactions.find(t=>t.id===tid)&&d.revenue>0){
+      bState.transactions.push({id:tid,type:'revenue',desc:'Ventes Shopify',amount:d.revenue,cat:'shopify',date:d.date,_shopify:true});
+    }
+  });
+  // Re-render finance if active
+  const fv=document.getElementById('view-finance');
+  if(fv&&fv.classList.contains('active'))renderFinance('month');
+}
+
+function injectShopifyIntoProducts(){
+  if(!_shopifyCache)return;
+  const{products,orders30,C}=_shopifyCache;
+  if(!products.length)return;
+  // Compute revenue per product from orders
+  const revByProduct={};
+  orders30.forEach(o=>{
+    if(o.financial_status!=='paid')return;
+    (o.line_items||[]).forEach(li=>{
+      revByProduct[li.product_id]=(revByProduct[li.product_id]||0)+parseFloat(li.price||0)*parseInt(li.quantity||1);
+    });
+  });
+  // Inject Shopify products that aren't already in bState
+  products.forEach(sp=>{
+    const existing=bState.products.find(p=>p._shopify_id===sp.id);
+    const rev=revByProduct[sp.id]||0;
+    const price=parseFloat(sp.variants?.[0]?.price||0);
+    if(existing){
+      existing.revenue=rev;existing.price=price;
+    }else{
+      bState.products.push({id:'sp_'+sp.id,_shopify_id:sp.id,name:sp.title,status:sp.status==='active'?'testing':'paused',price,cost:0,revenue:rev,adbudget:0,url:sp.handle?`https://${_shopifyCache.store}/products/${sp.handle}`:'',notes:'Importé depuis Shopify'});
+    }
+  });
+  const pv=document.getElementById('view-products');
+  if(pv&&pv.classList.contains('active'))renderProducts();
+}
+
+function injectShopifyIntoAnalytics(){
+  if(!_shopifyCache)return;
+  const{historyByDay,rev30,totalOrders30,C}=_shopifyCache;
+  // Merge into bState.metrics
+  historyByDay.forEach(d=>{
+    const existing=bState.metrics.findIndex(m=>m.date===d.date);
+    if(existing>=0){
+      bState.metrics[existing].revenue=d.revenue;
+      bState.metrics[existing].orders=d.orders;
+    }else{
+      bState.metrics.push({id:'sm_'+d.date,date:d.date,visitors:0,orders:d.orders,revenue:d.revenue,adspend:0,_shopify:true});
+    }
+  });
+  const av=document.getElementById('view-analytics');
+  if(av&&av.classList.contains('active'))renderAnalytics();
 }
 async function fetchMetaData(fromDetail=false){const token=localStorage.getItem('gabos_meta_token');const account=localStorage.getItem('gabos_meta_account');if(!token||!account)return;updateCardStatus('meta',false,'Chargement...');try{const since=new Date(Date.now()-30*86400000).toISOString().split('T')[0];const r=await fetch(`https://graph.facebook.com/v19.0/${account}/insights?fields=spend,impressions,clicks,cpc&time_range={'since':'${since}','until':'${new Date().toISOString().split('T')[0]}'}&access_token=${token}`);if(!r.ok)throw new Error('HTTP '+r.status);const data=await r.json();if(data.error)throw new Error(data.error.message);const d=(data.data&&data.data[0])||{};const C=getCurrency();updateCardStatus('meta',true);if(currentIntegration==='meta'||fromDetail){updateDetailBadge('meta');document.getElementById('int-detail-data').innerHTML=`<div class="grid-4" style="margin-bottom:14px"><div class="kpi-card" style="--kpi-c:var(--red)"><div class="kpi-lbl">Dépenses 30j</div><div class="kpi-val" style="color:var(--red)">${parseFloat(d.spend||0).toFixed(0)}${C}</div></div><div class="kpi-card" style="--kpi-c:var(--blue)"><div class="kpi-lbl">Impressions</div><div class="kpi-val" style="color:var(--blue);font-size:1.3rem">${(parseInt(d.impressions||0)/1000).toFixed(1)}k</div></div><div class="kpi-card" style="--kpi-c:var(--gold)"><div class="kpi-lbl">Clics</div><div class="kpi-val" style="color:var(--gold)">${parseInt(d.clicks||0)}</div></div><div class="kpi-card" style="--kpi-c:var(--p)"><div class="kpi-lbl">CPC</div><div class="kpi-val" style="color:var(--p)">${parseFloat(d.cpc||0).toFixed(2)}${C}</div></div></div>`;}}catch(e){updateCardStatus('meta',false,'Erreur');toast('Erreur Meta — '+e.message,'var(--red)');}}
 async function fetchTikTokData(fromDetail=false){const token=localStorage.getItem('gabos_tiktok_token');const account=localStorage.getItem('gabos_tiktok_account');if(!token||!account)return;updateCardStatus('tiktok',false,'Chargement...');try{const endDate=new Date().toISOString().split('T')[0];const startDate=new Date(Date.now()-30*86400000).toISOString().split('T')[0];const url=`https://business-api.tiktok.com/open_api/v1.3/report/integrated/get/?advertiser_id=${account}&report_type=BASIC&data_level=AUCTION_ADVERTISER&dimensions=["stat_time_day"]&metrics=["spend","impressions","clicks"]&start_date=${startDate}&end_date=${endDate}&page_size=30`;const r=await fetch(url,{headers:{'Access-Token':token,'Content-Type':'application/json'}});if(!r.ok)throw new Error('HTTP '+r.status);const data=await r.json();if(data.code!==0)throw new Error(data.message||'Erreur TikTok');const rows=data.data?.list||[];const spend=rows.reduce((s,r)=>s+parseFloat(r.metrics?.spend||0),0);const impressions=rows.reduce((s,r)=>s+parseInt(r.metrics?.impressions||0),0);const clicks=rows.reduce((s,r)=>s+parseInt(r.metrics?.clicks||0),0);const C=getCurrency();updateCardStatus('tiktok',true);if(currentIntegration==='tiktok'||fromDetail){updateDetailBadge('tiktok');document.getElementById('int-detail-data').innerHTML=`<div class="grid-4" style="margin-bottom:14px"><div class="kpi-card" style="--kpi-c:var(--red)"><div class="kpi-lbl">Dépenses 30j</div><div class="kpi-val" style="color:var(--red)">${spend.toFixed(0)}${C}</div></div><div class="kpi-card" style="--kpi-c:var(--blue)"><div class="kpi-lbl">Impressions</div><div class="kpi-val" style="color:var(--blue);font-size:1.3rem">${(impressions/1000).toFixed(1)}k</div></div><div class="kpi-card" style="--kpi-c:var(--gold)"><div class="kpi-lbl">Clics</div><div class="kpi-val" style="color:var(--gold)">${clicks}</div></div></div>`;}}catch(e){updateCardStatus('tiktok',false,'Erreur');toast('Erreur TikTok — '+e.message,'var(--red)');}}
