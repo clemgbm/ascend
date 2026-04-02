@@ -1,6 +1,9 @@
 {
   "version": 2,
-  "rewrites": [
-    { "source": "/", "destination": "/index.html" }
-  ]
+  "rewrites": [{ "source": "/", "destination": "/index.html" }],
+  "functions": {
+    "api/shopify.js": {
+      "runtime": "nodejs20.x"
+    }
+  }
 }
