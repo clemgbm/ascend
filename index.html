@@ -1304,6 +1304,9 @@ body[data-theme="light"] .modal-box,.modal-sheet{background:var(--s0)}
     <div class="nav-item" onclick="showView('products')" id="nav-products">
       <span class="nav-icon"><svg viewBox="0 0 20 20"><path d="M10 2l1.5 4.5H16l-3.5 2.5 1.5 4.5L10 11l-4 2.5 1.5-4.5L4 6.5h4.5L10 2z"/></svg></span> <span data-i18n="nav.products">Product Lab</span>
     </div>
+    <div class="nav-item" onclick="showView('clients')" id="nav-clients">
+      <span class="nav-icon"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="7" cy="7" r="3"/><circle cx="13" cy="7" r="3"/><path d="M1 17c0-3 2.7-5 6-5M13 12c3.3 0 6 2 6 5"/><path d="M7 12c3.3 0 6 2 6 5H1c0-3 2.7-5 6-5z"/></svg></span> <span>Clients</span>
+    </div>
     <div class="nav-item" onclick="showView('ads')" id="nav-ads">
       <span class="nav-icon"><svg viewBox="0 0 20 20"><path d="M3 7h8l4-3v12l-4-3H3V7z"/><path d="M15 9a2 2 0 010 2"/></svg></span> <span data-i18n="nav.ads">Ads Control</span>
     </div>
@@ -1408,6 +1411,22 @@ body[data-theme="light"] .modal-box,.modal-sheet{background:var(--s0)}
   </div>
   <div id="cmd-alert-zone" style="margin-bottom:16px"></div>
   <div class="grid-4" id="cmd-kpis"></div>
+  <div id="shopify-sales-overview" style="display:none;margin-bottom:16px">
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <div class="card-title" style="margin:0">🛍 Ventes Shopify — 30 derniers jours</div>
+        <div id="shopify-sales-period" style="font-size:.7rem;color:var(--t2)"></div>
+      </div>
+      <div style="position:relative;height:140px"><canvas id="chart-shopify-sales"></canvas></div>
+      <div class="grid-4" style="margin-top:12px" id="shopify-sales-kpis"></div>
+    </div>
+  </div>
+  <div id="shopify-recent-orders" style="display:none;margin-bottom:16px">
+    <div class="card">
+      <div class="card-title">📦 Commandes récentes</div>
+      <div id="shopify-orders-list"></div>
+    </div>
+  </div>
   <div class="grid-2">
     <div class="card"><div class="card-title" data-i18n="view.command.tasks">Tâches du jour</div><div id="cmd-tasks"></div><button class="btn btn-ghost btn-sm" onclick="closeSidebar();showView('tasks')" style="margin-top:10px;width:100%" data-i18n="view.command.seeall">Voir tout →</button></div>
     <div class="card"><div class="card-title" data-i18n="view.command.products">Produits actifs</div><div id="cmd-products"></div><button class="btn btn-ghost btn-sm" onclick="closeSidebar();showView('products')" style="margin-top:10px;width:100%" data-i18n="view.command.seeall">Voir tout →</button></div>
@@ -1418,6 +1437,16 @@ body[data-theme="light"] .modal-box,.modal-sheet{background:var(--s0)}
     <div style="font-family:'Syne',sans-serif;font-size:1.15rem;font-weight:800;color:var(--g)" id="cmd-goal-label">4 000€/jour en Décembre 2026</div>
     <div class="goal-bar-bg" style="margin-top:12px"><div class="goal-bar-fill" id="goal-progress-bar" style="width:1%"></div></div>
   </div>
+</div>
+
+<!-- ══ BUSINESS: CLIENTS ══ -->
+<div class="view" id="view-clients">
+  <div class="topbar">
+    <div class="topbar-left"><h2>Clients</h2></div>
+    <div class="topbar-right"><button class="btn btn-ghost btn-sm" onclick="fetchShopifyData(false)">↻ Sync</button></div>
+  </div>
+  <div class="grid-4" id="clients-kpis" style="margin-bottom:16px"></div>
+  <div class="card"><div class="card-title">Liste des clients</div><div id="clients-list"><div class="empty-state">Connecte Shopify pour voir tes clients</div></div></div>
 </div>
 
 <!-- ══ BUSINESS: FINANCE ══ -->
@@ -2931,6 +2960,7 @@ function showView(name) {
   if(name==='rewards'){renderRewards();}
   if(name==='manage'){renderManage();renderColorPicker();}
   if(name==='command'){renderCommand();}
+  if(name==='clients'){renderClients();}
   if(name==='finance'){renderFinance('month');}
   if(name==='products'){renderProducts();}
   if(name==='ads'){renderAds();}
@@ -4959,9 +4989,10 @@ async function fetchShopifyData(fromDetail=false){
   const ordersUrl=`${proxyBase}?${p('orders')}&days=30`;
   const historyUrl=`${proxyBase}?${p('orders_history')}&days=365`;
   const productsUrl=`${proxyBase}?${p('products')}`;
+  const customersUrl=`${proxyBase}?${p('customers')}&days=365`;
 
   try{
-    const [rOrders, rHistory, rProducts]=await Promise.all([fetch(ordersUrl), fetch(historyUrl), fetch(productsUrl)]);
+    const [rOrders, rHistory, rProducts, rCustomers]=await Promise.all([fetch(ordersUrl), fetch(historyUrl), fetch(productsUrl), fetch(customersUrl)]);
     if(!rOrders.ok){const e=await rOrders.json();throw new Error(e.error||'HTTP '+rOrders.status);}
     const C=getCurrency();
     const orders30=(await rOrders.json()).orders||[];
@@ -4993,7 +5024,8 @@ async function fetchShopifyData(fromDetail=false){
       .reduce((s,o)=>s+parseFloat(o.total_price||0),0);
 
     // ── Store in cache for other sections ──
-    _shopifyCache={orders30,ordersAll,products,rev30,revAll,totalOrders30,avgOrder,refunds,historyByDay,store,C};
+    const customers=rCustomers.ok?(await rCustomers.json()).customers||[]:[];
+    _shopifyCache={orders30,ordersAll,products,customers,rev30,revAll,totalOrders30,avgOrder,refunds,historyByDay,store,C};
 
     localStorage.setItem('gabos_shopify_rev',rev30.toFixed(0));
     localStorage.setItem('gabos_shopify_orders',totalOrders30);
@@ -5004,6 +5036,7 @@ async function fetchShopifyData(fromDetail=false){
     injectShopifyIntoFinance();
     injectShopifyIntoProducts();
     injectShopifyIntoAnalytics();
+    injectShopifyIntoClients();
 
     if(currentIntegration==='shopify'||fromDetail){
       updateDetailBadge('shopify');
@@ -5023,13 +5056,48 @@ async function fetchShopifyData(fromDetail=false){
 
 function injectShopifyIntoCommand(){
   if(!_shopifyCache)return;
-  const{rev30,revAll,totalOrders30,C}=_shopifyCache;
-  // Update CA Total and show Shopify badge
+  const{rev30,revAll,totalOrders30,avgOrder,refunds,historyByDay,orders30,C}=_shopifyCache;
   const elCa=document.getElementById('kpi-ca');
   if(elCa){countUp(elCa,revAll,{decimals:0,suffix:C});}
-  // Show Shopify tag near CA
   const az=document.getElementById('cmd-alert-zone');
   if(az&&revAll>0)az.innerHTML=`<div class="alert" style="margin-bottom:12px;background:var(--go);border:1px solid rgba(0,229,160,.2)">🛍 Shopify connecté · CA 30j : <b>${rev30.toFixed(0)}${C}</b> · ${totalOrders30} commandes</div>`;
+  // Sales chart
+  const salesEl=document.getElementById('shopify-sales-overview');
+  const ordersEl=document.getElementById('shopify-recent-orders');
+  if(salesEl)salesEl.style.display='';
+  if(ordersEl)ordersEl.style.display='';
+  // KPIs
+  const kpisEl=document.getElementById('shopify-sales-kpis');
+  if(kpisEl)kpisEl.innerHTML=`
+    <div style="text-align:center;background:var(--s1);border-radius:8px;padding:8px"><div style="font-family:'Syne',sans-serif;font-weight:800;font-size:.95rem;color:var(--g)">${rev30.toFixed(0)}${C}</div><div style="font-size:.58rem;color:var(--t1);margin-top:2px;text-transform:uppercase;letter-spacing:.8px">CA 30j</div></div>
+    <div style="text-align:center;background:var(--s1);border-radius:8px;padding:8px"><div style="font-family:'Syne',sans-serif;font-weight:800;font-size:.95rem;color:var(--p)">${totalOrders30}</div><div style="font-size:.58rem;color:var(--t1);margin-top:2px;text-transform:uppercase;letter-spacing:.8px">Commandes</div></div>
+    <div style="text-align:center;background:var(--s1);border-radius:8px;padding:8px"><div style="font-family:'Syne',sans-serif;font-weight:800;font-size:.95rem;color:var(--blue)">${avgOrder}${C}</div><div style="font-size:.58rem;color:var(--t1);margin-top:2px;text-transform:uppercase;letter-spacing:.8px">Panier moy.</div></div>
+    <div style="text-align:center;background:var(--s1);border-radius:8px;padding:8px"><div style="font-family:'Syne',sans-serif;font-weight:800;font-size:.95rem;color:var(--red)">${refunds}</div><div style="font-size:.58rem;color:var(--t1);margin-top:2px;text-transform:uppercase;letter-spacing:.8px">Remboursés</div></div>`;
+  // Chart 30 days
+  const last30=historyByDay.slice(-30);
+  const labels=last30.map(d=>d.date.slice(5));
+  const dataRev=last30.map(d=>d.revenue);
+  const ctx=document.getElementById('chart-shopify-sales');
+  if(ctx){
+    if(ctx._chart)ctx._chart.destroy();
+    ctx._chart=new Chart(ctx,{type:'bar',data:{labels,datasets:[{data:dataRev,backgroundColor:'rgba(0,229,160,.3)',borderColor:'rgba(0,229,160,.8)',borderWidth:1,borderRadius:3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#44446a',font:{size:9}},grid:{display:false}},y:{ticks:{color:'#44446a',font:{size:9},callback:v=>v+C},grid:{color:'rgba(255,255,255,.04)'}}}}});
+  }
+  // Recent orders
+  const ordersListEl=document.getElementById('shopify-orders-list');
+  if(ordersListEl){
+    const recent=orders30.slice(0,8);
+    ordersListEl.innerHTML=recent.length?recent.map(o=>{
+      const statusColor=o.financial_status==='paid'?'var(--g)':o.financial_status==='refunded'?'var(--red)':'var(--gold)';
+      const name=o.billing_address?(o.billing_address.first_name+' '+o.billing_address.last_name).trim():o.email||'Client';
+      return`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--b0);font-size:.82rem">
+        <div><div style="font-weight:600">${name}</div><div style="font-size:.7rem;color:var(--t2)">${o.created_at?o.created_at.slice(0,10):''} · #${o.order_number||o.id}</div></div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <span style="font-family:'DM Mono',monospace;color:var(--g)">${parseFloat(o.total_price||0).toFixed(2)}${C}</span>
+          <span style="font-size:.65rem;padding:2px 7px;border-radius:999px;background:${statusColor}20;color:${statusColor}">${o.financial_status}</span>
+        </div>
+      </div>`;
+    }).join(''):'<div style="padding:16px 0;text-align:center;color:var(--t1);font-size:.82rem">Aucune commande récente</div>';
+  }
 }
 
 function injectShopifyIntoFinance(){
@@ -5072,6 +5140,57 @@ function injectShopifyIntoProducts(){
   });
   const pv=document.getElementById('view-products');
   if(pv&&pv.classList.contains('active'))renderProducts();
+}
+
+function renderClients(){
+  if(!_shopifyCache||!_shopifyCache.customers||!_shopifyCache.customers.length){
+    const el=document.getElementById('clients-list');
+    if(el)el.innerHTML='<div class="empty-state">Connecte Shopify pour voir tes clients</div>';
+    return;
+  }
+  injectShopifyIntoClients();
+}
+
+function injectShopifyIntoClients(){
+  if(!_shopifyCache)return;
+  const{customers,orders30,C}=_shopifyCache;
+  if(!customers.length)return;
+  // KPIs
+  const totalCustomers=customers.length;
+  const newThisMonth=customers.filter(c=>{
+    const d=new Date(c.created_at);
+    const now=new Date();
+    return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear();
+  }).length;
+  const withOrders=customers.filter(c=>c.orders_count>0).length;
+  const totalSpent=customers.reduce((s,c)=>s+parseFloat(c.total_spent||0),0);
+  const kpisEl=document.getElementById('clients-kpis');
+  if(kpisEl)kpisEl.innerHTML=`
+    <div class="kpi-card" style="--kpi-c:var(--p)"><div class="kpi-lbl">Total clients</div><div class="kpi-val" style="color:var(--p)">${totalCustomers}</div></div>
+    <div class="kpi-card" style="--kpi-c:var(--g)"><div class="kpi-lbl">Nouveaux ce mois</div><div class="kpi-val" style="color:var(--g)">${newThisMonth}</div></div>
+    <div class="kpi-card" style="--kpi-c:var(--blue)"><div class="kpi-lbl">Ont commandé</div><div class="kpi-val" style="color:var(--blue)">${withOrders}</div></div>
+    <div class="kpi-card" style="--kpi-c:var(--gold)"><div class="kpi-lbl">CA total clients</div><div class="kpi-val" style="color:var(--gold);font-size:1.1rem">${totalSpent.toFixed(0)}${C}</div></div>`;
+  // List
+  const listEl=document.getElementById('clients-list');
+  if(listEl){
+    const sorted=customers.slice().sort((a,b)=>parseFloat(b.total_spent||0)-parseFloat(a.total_spent||0));
+    listEl.innerHTML=`<div style="display:grid;grid-template-columns:1fr auto auto auto;gap:8px;padding:6px 0;border-bottom:1px solid var(--b1);font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--t2)">
+      <div>Client</div><div>Commandes</div><div>CA total</div><div>Depuis</div>
+    </div>`+sorted.slice(0,50).map(c=>{
+      const name=((c.first_name||'')+' '+(c.last_name||'')).trim()||c.email||'—';
+      const spent=parseFloat(c.total_spent||0);
+      const date=c.created_at?c.created_at.slice(0,10):'—';
+      return`<div style="display:grid;grid-template-columns:1fr auto auto auto;gap:8px;padding:8px 0;border-bottom:1px solid var(--b0);font-size:.82rem;align-items:center">
+        <div><div style="font-weight:600">${name}</div><div style="font-size:.7rem;color:var(--t2)">${c.email||''}</div></div>
+        <div style="text-align:center;color:var(--p);font-weight:700">${c.orders_count||0}</div>
+        <div style="text-align:right;color:var(--g);font-family:'DM Mono',monospace">${spent.toFixed(0)}${C}</div>
+        <div style="text-align:right;font-size:.7rem;color:var(--t2)">${date}</div>
+      </div>`;
+    }).join('');
+  }
+  // Also inject into view if active
+  const cv=document.getElementById('view-clients');
+  if(cv&&cv.classList.contains('active'))renderClients();
 }
 
 function injectShopifyIntoAnalytics(){
