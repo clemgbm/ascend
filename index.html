@@ -775,85 +775,139 @@ input[type=range]{flex:1;accent-color:var(--p);height:4px;cursor:pointer}
   background-image:radial-gradient(ellipse 60% 50% at 50% 40%,rgba(124,92,252,.15),transparent)}
 
 /* ══════════════════════════════════════════
-   BOTTOM NAV BAR — safe area aware
+   QUICK-NAV DOCK — replaces bottom tab bar
 ══════════════════════════════════════════ */
 :root{
-  --bottom-nav-h:64px;
+  --bottom-nav-h:0px; /* dock is overlay, no padding needed */
   --safe-bottom:env(safe-area-inset-bottom, 16px);
 }
 
-/* The bar itself */
-.bottom-nav{
-  display:none; /* hidden on desktop */
-  position:fixed;bottom:0;left:0;right:0;z-index:300;
-  /* Height = nav tabs area + system nav bar padding */
-  height:calc(var(--bottom-nav-h) + env(safe-area-inset-bottom, 16px));
-  background:rgba(8,8,18,.97);
-  border-top:1px solid rgba(255,255,255,.08);
-  backdrop-filter:blur(24px) saturate(1.5);
-  -webkit-backdrop-filter:blur(24px) saturate(1.5);
-  /* Push content above system buttons via padding — NOT height trick */
-  padding-bottom:env(safe-area-inset-bottom, 16px);
-  padding-left:env(safe-area-inset-left, 0px);
-  padding-right:env(safe-area-inset-right, 0px);
-}
-.bottom-nav-inner{
-  display:flex;align-items:stretch;
-  height:var(--bottom-nav-h);
-  max-width:480px;margin:0 auto;
-}
-.bn-tab{
-  flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
-  gap:4px;cursor:pointer;border:none;background:none;
-  color:rgba(255,255,255,.35);
+/* OLD bottom-nav: hidden */
+.bottom-nav{ display:none !important; }
+.bottom-nav-inner{ display:none !important; }
+.bn-tab,.bn-icon,.bn-label{ display:none !important; }
+.bn-mode-row{ display:none; }
+
+/* ── DOCK TRIGGER BUTTON ── */
+.dock-trigger{
+  display:none; /* shown on mobile only */
+  position:fixed;bottom:calc(20px + env(safe-area-inset-bottom,0px));right:18px;
+  z-index:400;
+  width:52px;height:52px;border-radius:16px;border:none;
+  background:linear-gradient(135deg,var(--p),var(--pk));
+  box-shadow:0 6px 24px rgba(124,92,252,.45),0 2px 8px rgba(0,0,0,.4);
+  cursor:pointer;color:#fff;
+  display:none;align-items:center;justify-content:center;
+  transition:transform .18s cubic-bezier(.34,1.56,.64,1),box-shadow .18s;
   -webkit-tap-highlight-color:transparent;
-  transition:color .18s cubic-bezier(.4,0,.2,1);
-  padding:0 4px;position:relative;
-  min-height:44px; /* iOS tap target */
 }
-.bn-tab:active{opacity:.7}
-.bn-tab.active{color:var(--p)}
-body.mode-hab .bn-tab.active{color:var(--g)}
+.dock-trigger:active{transform:scale(.93)}
+.dock-trigger svg{width:22px;height:22px;stroke:#fff;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;transition:transform .3s cubic-bezier(.34,1.56,.64,1)}
+.dock-trigger.open svg{transform:rotate(45deg)}
 
-.bn-icon{
-  width:24px;height:24px;display:flex;align-items:center;justify-content:center;
-  border-radius:8px;transition:background .18s;position:relative;
+/* ── DOCK OVERLAY ── */
+.dock-overlay{
+  display:none;position:fixed;inset:0;z-index:350;
+  background:rgba(0,0,10,.72);backdrop-filter:blur(8px);
+  -webkit-backdrop-filter:blur(8px);
+  opacity:0;transition:opacity .22s;
 }
-.bn-tab.active .bn-icon{
-  background:rgba(124,92,252,.14);
+.dock-overlay.open{display:block;opacity:1}
+
+/* ── DOCK PANEL ── */
+.dock-panel{
+  position:fixed;bottom:0;left:0;right:0;z-index:360;
+  background:rgba(10,10,24,.98);
+  border-top:1px solid rgba(255,255,255,.07);
+  border-radius:22px 22px 0 0;
+  padding:12px 14px calc(20px + env(safe-area-inset-bottom,0px));
+  transform:translateY(100%);
+  transition:transform .3s cubic-bezier(.4,0,.2,1);
+  max-height:82vh;overflow-y:auto;scroll-behavior:smooth;
 }
-body.mode-hab .bn-tab.active .bn-icon{
-  background:rgba(0,229,160,.12);
+.dock-panel.open{transform:translateY(0)}
+
+.dock-handle{
+  width:36px;height:4px;border-radius:999px;
+  background:rgba(255,255,255,.13);
+  margin:0 auto 14px;
 }
-.bn-icon svg{
-  width:20px;height:20px;stroke:currentColor;fill:none;
-  stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;
-  transition:transform .2s cubic-bezier(.34,1.56,.64,1);
+
+/* Mode switcher inside dock */
+.dock-mode-switcher{
+  display:flex;gap:6px;background:rgba(255,255,255,.04);
+  border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:4px;
+  margin-bottom:14px;
 }
-.bn-tab.active .bn-icon svg{transform:scale(1.1)}
-.bn-label{
+.dock-mode-pill{
+  flex:1;display:flex;align-items:center;justify-content:center;gap:7px;
+  padding:9px 8px;border-radius:10px;
+  font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:.8rem;
+  cursor:pointer;transition:all .2s;color:rgba(255,255,255,.35);
+  user-select:none;letter-spacing:.1px;
+}
+.dock-mode-pill svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.dock-mode-pill.active-biz{background:linear-gradient(135deg,var(--p),var(--pk));color:#fff;box-shadow:0 3px 12px rgba(124,92,252,.35)}
+.dock-mode-pill.active-hab{background:linear-gradient(135deg,#00c49a,var(--g));color:#000;font-weight:800;box-shadow:0 3px 12px rgba(0,229,160,.3)}
+
+/* Section label */
+.dock-group-lbl{
+  font-size:.52rem;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;
+  padding:4px 4px 6px;margin-top:4px;
   font-family:'Plus Jakarta Sans',sans-serif;
-  font-size:.6rem;font-weight:700;letter-spacing:.3px;
-  line-height:1;transition:opacity .18s;
+  grid-column:1/-1;
 }
-.bn-tab:not(.active) .bn-label{opacity:.5}
+body.mode-biz .dock-group-lbl.lbl-biz{color:var(--p)}
+body.mode-hab .dock-group-lbl.lbl-hab{color:var(--g)}
+.dock-group-lbl.lbl-tools{color:var(--gold)}
 
-/* Active indicator dot above icon */
-.bn-tab.active::before{
-  content:'';position:absolute;top:6px;
-  width:28px;height:2px;border-radius:999px;
-  background:var(--p);
-  box-shadow:0 0 8px var(--p);
-  transition:background .2s, box-shadow .2s;
-}
-body.mode-hab .bn-tab.active::before{
-  background:var(--g);box-shadow:0 0 8px var(--g);
+/* Grid of nav items */
+.dock-grid{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:6px;
 }
 
-/* Mode switcher mini pill inside bottom nav — replace hamburger */
-.bn-mode-row{
-  display:none; /* shown only in bottom-more-drawer */
+/* Individual dock item */
+.dock-item{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:6px;padding:11px 4px;border-radius:14px;cursor:pointer;
+  border:1px solid rgba(255,255,255,.05);
+  background:rgba(255,255,255,.03);
+  transition:all .15s cubic-bezier(.34,1.2,.64,1);
+  -webkit-tap-highlight-color:transparent;
+  user-select:none;
 }
+.dock-item:active{transform:scale(.93);background:rgba(255,255,255,.08)}
+.dock-item.active{
+  background:rgba(124,92,252,.12);
+  border-color:rgba(124,92,252,.28);
+}
+body.mode-hab .dock-item.active{
+  background:rgba(0,229,160,.1);
+  border-color:rgba(0,229,160,.25);
+}
+.dock-item-icon{
+  width:34px;height:34px;border-radius:10px;
+  display:flex;align-items:center;justify-content:center;
+  background:rgba(255,255,255,.05);
+  border:1px solid rgba(255,255,255,.06);
+  transition:all .15s;
+}
+.dock-item.active .dock-item-icon{
+  background:rgba(124,92,252,.18);border-color:rgba(124,92,252,.3);
+}
+body.mode-hab .dock-item.active .dock-item-icon{
+  background:rgba(0,229,160,.15);border-color:rgba(0,229,160,.25);
+}
+.dock-item-icon svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;transition:color .15s}
+.dock-item-lbl{
+  font-family:'Plus Jakarta Sans',sans-serif;font-size:.58rem;font-weight:700;
+  letter-spacing:.2px;color:rgba(255,255,255,.5);text-align:center;line-height:1.2;
+  transition:color .15s;
+}
+.dock-item.active .dock-item-lbl{color:var(--p)}
+body.mode-hab .dock-item.active .dock-item-lbl{color:var(--g)}
 
 /* ── BOTTOM MORE DRAWER ── */
 .bottom-drawer-overlay{
@@ -941,13 +995,15 @@ body.mode-hab .drawer-nav-item.active .drawer-nav-icon{background:rgba(0,229,160
   /* Sidebar still exists for desktop fallback, hidden on mobile */
   .sidebar{transform:translateX(-260px);width:260px;box-shadow:none}
   .sidebar.open{transform:translateX(0);box-shadow:24px 0 80px rgba(0,0,0,.8)}
-  /* Main gets bottom padding for the nav bar + system bar */
-  .main{margin-left:0;padding:calc(62px + 8px) 14px calc(var(--bottom-nav-h) + env(safe-area-inset-bottom, 16px) + 16px)}
-  /* Mode wrap: hide hamburger, keep mode switcher centered */
+  /* Main: no extra bottom padding (dock is floating, not a bar) */
+  .main{margin-left:0;padding:calc(62px + 8px) 14px 32px}
+  /* Mode wrap */
   .mode-wrap{left:0;padding:0 14px}
-  .hamburger{display:none !important} /* replaced by bottom nav */
-  /* Show bottom nav */
-  .bottom-nav{display:block}
+  .hamburger{display:none !important}
+  /* Show dock trigger button */
+  .dock-trigger{display:flex}
+  /* Keep old bottom-nav hidden */
+  .bottom-nav{display:none !important}
   /* col-span-2 collapses on small screens */
   .col-span-2{grid-column:span 1}
   /* grid-4 KPIs: force 2 cols on tablet (auto-fill would give 3 at ~768px) */
@@ -6334,237 +6390,155 @@ setInterval(()=>{
 <iframe id="yt-player-frame" allow="autoplay" style="display:none;position:absolute;width:1px;height:1px;opacity:0;pointer-events:none" frameborder="0"></iframe>
 
 <!-- ══════════════════════════════════════════
-     BOTTOM NAV BAR (mobile only)
+     QUICK-NAV DOCK (mobile)
 ══════════════════════════════════════════ -->
-<nav class="bottom-nav" id="bottomNav" aria-label="Navigation principale">
-  <div class="bottom-nav-inner" id="bottomNavInner">
-    <!-- tabs injected by JS depending on mode -->
+
+<!-- Floating trigger button -->
+<button class="dock-trigger" id="dockTrigger" onclick="toggleDock()" aria-label="Navigation rapide">
+  <svg viewBox="0 0 24 24"><path d="M5 5h4v4H5zM10 5h4v4h-4zM15 5h4v4h-4zM5 10h4v4H5zM10 10h4v4h-4zM15 10h4v4h-4zM5 15h4v4H5zM10 15h4v4h-4zM15 15h4v4h-4z"/></svg>
+</button>
+
+<!-- Overlay -->
+<div class="dock-overlay" id="dockOverlay" onclick="closeDock()"></div>
+
+<!-- Dock panel -->
+<div class="dock-panel" id="dockPanel">
+  <div class="dock-handle"></div>
+
+  <!-- Mode switcher -->
+  <div class="dock-mode-switcher">
+    <div class="dock-mode-pill" id="dock-pill-biz" onclick="setMode('biz');renderDock()">
+      <svg viewBox="0 0 20 20"><path d="M3 7h14v10a1 1 0 01-1 1H4a1 1 0 01-1-1V7z"/><path d="M7 7V5a3 3 0 016 0v2"/></svg>
+      Business
+    </div>
+    <div class="dock-mode-pill" id="dock-pill-hab" onclick="setMode('hab');renderDock()">
+      <svg viewBox="0 0 20 20"><circle cx="10" cy="10" r="4"/><path d="M10 2v2M10 16v2M2 10h2M16 10h2"/></svg>
+      Habitudes
+    </div>
   </div>
-</nav>
 
-<!-- ══ BURGER MENU DRAWER ══ -->
-<div class="bottom-drawer-overlay" id="drawerOverlay" onclick="closeDrawer()"></div>
-<div class="bottom-drawer" id="bottomDrawer" style="max-height:85vh;overflow-y:auto">
-  <div class="drawer-handle"></div>
-
-  <!-- Header -->
-  <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 16px 12px">
-    <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:.9rem;background:linear-gradient(135deg,var(--p),var(--pk));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">ASCEND</div>
-    <button onclick="closeDrawer()" style="background:var(--b0);border:none;color:var(--t1);width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:1rem">✕</button>
-  </div>
-
-  <!-- All sections grid -->
-  <div style="padding:0 12px 12px;display:grid;grid-template-columns:1fr 1fr;gap:8px" id="drawerNavItems"></div>
-
-  <!-- XP block -->
-  <div class="drawer-xp-block" style="margin:0 12px 16px">
-    <div class="level-badge" id="drawer-level-badge"><svg width="12" height="12" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 18V10M10 10C10 10 6 6 3 4c5-2 7 2 7 6M10 10c0 0 4-4 7-6-2 5-7 6-7 6"/></svg> Niveau 1</div>
-    <div class="xp-bar-bg"><div class="xp-bar-fill" id="drawer-xp-bar" style="width:0%"></div></div>
-    <div class="xp-lbl"><span id="drawer-xp-val">0 / 100 XP</span></div>
-    <div class="streak-pill" id="drawer-streak" style="margin-top:8px"><svg width="12" height="12" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2C10 2 5 8 5 12.5a5 5 0 0010 0C15 8 10 2 10 2z"/><path d="M10 15.5a2 2 0 010-4"/></svg> 0 jours</div>
-  </div>
+  <!-- Nav grid -->
+  <div class="dock-grid" id="dockGrid"></div>
 </div>
 
 <script>
-/* ══════════════════════════════════════════
-   BOTTOM NAV LOGIC
-══════════════════════════════════════════ */
+/* ══ QUICK-NAV DOCK LOGIC ══ */
+let _dockOpen = false;
+let _dockActiveView = '';
 
-// Tab definitions per mode
-const BIZ_TABS = [
-  { id:'command',  label:'Home',     svg:'<path d="M10 3L4 11h5v6h2v-6h5L10 3z"/>' },
-  { id:'finance',  label:'Finance',  svg:'<rect x="2" y="12" width="4" height="6" rx="1"/><rect x="8" y="8" width="4" height="10" rx="1"/><rect x="14" y="4" width="4" height="14" rx="1"/>' },
-  { id:'tasks',    label:'Tâches',   svg:'<path d="M9 5h8M9 10h8M9 15h8M4 5l1 1 2-2M4 10l1 1 2-2M4 15l1 1 2-2"/>' },
-  { id:'coach',    label:'AI Coach', svg:'<rect x="3" y="5" width="14" height="10" rx="2"/><path d="M7 9h6M7 12h4"/><path d="M10 15v2"/>' },
-  { id:'__burger__', label:'Menu',   svg:'<path d="M3 5h14M3 10h14M3 15h14"/>' }
-];
-
-const HAB_TABS = [
-  { id:'today',    label:"Aujourd'hui", svg:'<circle cx="10" cy="10" r="4"/><path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.2 4.2l1.4 1.4M14.4 14.4l1.4 1.4M4.2 15.8l1.4-1.4M14.4 5.6l1.4-1.4"/>' },
-  { id:'calendar', label:'Agenda',       svg:'<rect x="3" y="4" width="14" height="13" rx="2"/><path d="M3 8h14M7 2v4M13 2v4"/>' },
-  { id:'focus',    label:'Focus',        svg:'<circle cx="10" cy="10" r="7"/><path d="M10 7v3l2 2"/>' },
-  { id:'stats',    label:'Stats',        svg:'<polyline points="3,16 7,10 11,13 17,7"/>' },
-  { id:'__burger__', label:'Menu',       svg:'<path d="M3 5h14M3 10h14M3 15h14"/>' }
-];
-
-// Extra items shown in drawer (everything not in main tabs)
-const BIZ_DRAWER = [
-  { group:'Business' },
-  { id:'strategy',     label:'Stratégie',    svg:'<circle cx="10" cy="10" r="7"/><circle cx="10" cy="10" r="3"/><path d="M10 3v2M10 15v2M3 10h2M15 10h2"/>' },
-  { id:'products',     label:'Product Lab',  svg:'<path d="M10 2l1.5 4.5H16l-3.5 2.5 1.5 4.5L10 11l-4 2.5 1.5-4.5L4 6.5h4.5L10 2z"/>' },
-  { id:'ads',          label:'Ads Control',  svg:'<path d="M3 7h8l4-3v12l-4-3H3V7z"/><path d="M15 9a2 2 0 010 2"/>' },
-  { id:'analytics',    label:'Analytics',    svg:'<polyline points="3,14 7,9 11,11 17,5"/><polyline points="13,5 17,5 17,9"/>' },
-  { group:'Outils' },
-  { id:'knowledge',    label:'Knowledge',    svg:'<path d="M4 4h12v12a2 2 0 01-2 2H6a2 2 0 01-2-2V4z"/><path d="M8 4v8l2-2 2 2V4"/>' },
-  { id:'hub',          label:'Hub de liens', svg:'<path d="M10 13a3 3 0 100-6 3 3 0 000 6z"/><path d="M10 2v2M10 16v2M2 10h2M16 10h2"/>' },
-  { id:'integrations', label:'Intégrations', svg:'<path d="M12 2H8v4H4l2 2-2 2h4v4h4v-4h4l-2-2 2-2h-4V2z"/>' },
-  { id:'settings',     label:'Paramètres',   svg:'<circle cx="10" cy="10" r="2.5"/><path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.9 4.9l1.4 1.4M13.7 13.7l1.4 1.4M4.9 15.1l1.4-1.4M13.7 6.3l1.4-1.4"/>' }
-];
-
-const HAB_DRAWER = [
-  { group:'Habitudes' },
-  { id:'objectives', label:'Objectifs',   svg:'<path d="M4 4v12l6-3 6 3V4z"/>' },
-  { id:'rewards',    label:'Récompenses', svg:'<path d="M10 2l2 4h4l-3 3 1 4-4-2-4 2 1-4-3-3h4z"/>' },
-  { id:'manage',     label:'Gérer',       svg:'<path d="M3 6h14M3 10h14M3 14h8"/><path d="M15 11l4 4-4 4"/>' },
-  { group:'Outils' },
-  { id:'settings',   label:'Paramètres',  svg:'<circle cx="10" cy="10" r="2.5"/><path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.9 4.9l1.4 1.4M13.7 13.7l1.4 1.4M4.9 15.1l1.4-1.4M13.7 6.3l1.4-1.4"/>' }
-];
-
-let _drawerOpen = false;
-let _currentBnView = '';
-
-function renderBottomNav(mode, activeView) {
-  const tabs = mode === 'biz' ? BIZ_TABS : HAB_TABS;
-  const inner = document.getElementById('bottomNavInner');
-  inner.innerHTML = tabs.map(t => {
-    const isBurger = t.id === '__burger__';
-    const isActive = !isBurger && t.id === activeView;
-    return `<button class="bn-tab${isActive ? ' active' : ''}${isBurger ? ' bn-burger' : ''}" 
-      onclick="${isBurger ? 'openDrawer()' : `bnNav('${t.id}')`}"
-      aria-label="${t.label}">
-      <span class="bn-icon">
-        <svg viewBox="0 0 20 20">${t.svg}</svg>
-      </span>
-      <span class="bn-label">${t.label}</span>
-    </button>`;
-  }).join('');
-  _currentBnView = activeView;
-}
-
-// All sections for burger menu
-const ALL_SECTIONS = [
-  { section: 'Business', color: 'var(--p)', items: [
-    { id:'command',     label:'Home',        svg:'<path d="M10 3L4 11h5v6h2v-6h5L10 3z"/>',                                                mode:'biz' },
+const DOCK_ALL_SECTIONS = [
+  { label:'Business', cls:'lbl-biz', mode:'biz', items:[
+    { id:'command',     label:'Home',        svg:'<path d="M10 3L4 11h5v6h2v-6h5L10 3z"/>',                                                                mode:'biz' },
     { id:'finance',     label:'Finance',     svg:'<rect x="2" y="12" width="4" height="6" rx="1"/><rect x="8" y="8" width="4" height="10" rx="1"/><rect x="14" y="4" width="4" height="14" rx="1"/>', mode:'biz' },
-    { id:'strategy',    label:'Stratégie',   svg:'<circle cx="10" cy="10" r="7"/><circle cx="10" cy="10" r="3"/><path d="M10 3v2M10 15v2M3 10h2M15 10h2"/>', mode:'biz' },
-    { id:'products',    label:'Produits',    svg:'<path d="M10 2l1.5 4.5H16l-3.5 2.5 1.5 4.5L10 11l-4 2.5 1.5-4.5L4 6.5h4.5L10 2z"/>',  mode:'biz' },
-    { id:'ads',         label:'Pub',         svg:'<path d="M3 7h8l4-3v12l-4-3H3V7z"/><path d="M15 9a2 2 0 010 2"/>',                      mode:'biz' },
-    { id:'analytics',   label:'Analytics',   svg:'<polyline points="3,14 7,9 11,11 17,5"/><polyline points="13,5 17,5 17,9"/>',             mode:'biz' },
+    { id:'strategy',    label:'Stratégie',   svg:'<circle cx="10" cy="10" r="7"/><circle cx="10" cy="10" r="3"/><path d="M10 3v2M10 15v2M3 10h2M15 10h2"/>',mode:'biz' },
+    { id:'products',    label:'Produits',    svg:'<path d="M10 2l1.5 4.5H16l-3.5 2.5 1.5 4.5L10 11l-4 2.5 1.5-4.5L4 6.5h4.5L10 2z"/>',                  mode:'biz' },
+    { id:'ads',         label:'Pub',         svg:'<path d="M3 7h8l4-3v12l-4-3H3V7z"/><path d="M15 9a2 2 0 010 2"/>',                                      mode:'biz' },
+    { id:'analytics',   label:'Analytics',   svg:'<polyline points="3,14 7,9 11,11 17,5"/><polyline points="13,5 17,5 17,9"/>',                             mode:'biz' },
     { id:'clients',     label:'Clients',     svg:'<circle cx="7" cy="7" r="3"/><circle cx="13" cy="7" r="3"/><path d="M1 17c0-3 2.7-5 6-5M13 12c3.3 0 6 2 6 5"/>', mode:'biz' },
-    { id:'tasks',       label:'Tâches',      svg:'<path d="M9 5h8M9 10h8M9 15h8M4 5l1 1 2-2M4 10l1 1 2-2M4 15l1 1 2-2"/>',               mode:'biz' },
+    { id:'tasks',       label:'Tâches',      svg:'<path d="M9 5h8M9 10h8M9 15h8M4 5l1 1 2-2M4 10l1 1 2-2M4 15l1 1 2-2"/>',                               mode:'biz' },
   ]},
-  { section: 'Habitudes', color: 'var(--g)', items: [
-    { id:'today',       label:"Aujourd'hui", svg:'<circle cx="10" cy="10" r="4"/><path d="M10 2v2M10 16v2M2 10h2M16 10h2"/>',             mode:'hab' },
-    { id:'calendar',    label:'Agenda',      svg:'<rect x="3" y="4" width="14" height="13" rx="2"/><path d="M3 8h14M7 2v4M13 2v4"/>',     mode:'hab' },
-    { id:'focus',       label:'Focus',       svg:'<circle cx="10" cy="10" r="7"/><path d="M10 7v3l2 2"/>',                                 mode:'hab' },
-    { id:'stats',       label:'Stats',       svg:'<polyline points="3,16 7,10 11,13 17,7"/>',                                              mode:'hab' },
-    { id:'objectives',  label:'Objectifs',   svg:'<path d="M4 4v12l6-3 6 3V4z"/>',                                                        mode:'hab' },
-    { id:'rewards',     label:'Récompenses', svg:'<path d="M10 2l2 4h4l-3 3 1 4-4-2-4 2 1-4-3-3h4z"/>',                                  mode:'hab' },
-    { id:'manage',      label:'Gérer',       svg:'<path d="M3 6h14M3 10h14M3 14h8"/><path d="M15 11l4 4-4 4"/>',                         mode:'hab' },
+  { label:'Habitudes', cls:'lbl-hab', mode:'hab', items:[
+    { id:'today',       label:"Auj.",        svg:'<circle cx="10" cy="10" r="4"/><path d="M10 2v2M10 16v2M2 10h2M16 10h2"/>',                             mode:'hab' },
+    { id:'calendar',    label:'Agenda',      svg:'<rect x="3" y="4" width="14" height="13" rx="2"/><path d="M3 8h14M7 2v4M13 2v4"/>',                     mode:'hab' },
+    { id:'focus',       label:'Focus',       svg:'<circle cx="10" cy="10" r="7"/><path d="M10 7v3l2 2"/>',                                                 mode:'hab' },
+    { id:'stats',       label:'Stats',       svg:'<polyline points="3,16 7,10 11,13 17,7"/>',                                                              mode:'hab' },
+    { id:'objectives',  label:'Objectifs',   svg:'<path d="M4 4v12l6-3 6 3V4z"/>',                                                                        mode:'hab' },
+    { id:'rewards',     label:'Récomp.',     svg:'<path d="M10 2l2 4h4l-3 3 1 4-4-2-4 2 1-4-3-3h4z"/>',                                                  mode:'hab' },
+    { id:'manage',      label:'Gérer',       svg:'<path d="M3 6h14M3 10h14M3 14h8"/><path d="M15 11l4 4-4 4"/>',                                         mode:'hab' },
   ]},
-  { section: 'Outils', color: 'var(--gold)', items: [
-    { id:'coach',       label:'AI Coach',    svg:'<rect x="3" y="5" width="14" height="10" rx="2"/><path d="M7 9h6M7 12h4"/><path d="M10 15v2"/>', mode:null },
-    { id:'knowledge',   label:'Knowledge',   svg:'<path d="M4 4h12v12a2 2 0 01-2 2H6a2 2 0 01-2-2V4z"/><path d="M8 4v8l2-2 2 2V4"/>',   mode:null },
-    { id:'hub',         label:'Hub liens',   svg:'<path d="M10 13a3 3 0 100-6 3 3 0 000 6z"/><path d="M10 2v2M10 16v2M2 10h2M16 10h2"/>', mode:null },
-    { id:'integrations',label:'Intégrations',svg:'<path d="M12 2H8v4H4l2 2-2 2h4v4h4v-4h4l-2-2 2-2h-4V2z"/>',                           mode:null },
-    { id:'settings',    label:'Paramètres',  svg:'<circle cx="10" cy="10" r="2.5"/><path d="M10 2v2M10 16v2M2 10h2M16 10h2"/>',           mode:null },
+  { label:'Outils', cls:'lbl-tools', mode:null, items:[
+    { id:'coach',       label:'AI Coach',    svg:'<rect x="3" y="5" width="14" height="10" rx="2"/><path d="M7 9h6M7 12h4"/><path d="M10 15v2"/>',       mode:null },
+    { id:'knowledge',   label:'Knowledge',   svg:'<path d="M4 4h12v12a2 2 0 01-2 2H6a2 2 0 01-2-2V4z"/><path d="M8 4v8l2-2 2 2V4"/>',                   mode:null },
+    { id:'hub',         label:'Hub liens',   svg:'<path d="M10 13a3 3 0 100-6 3 3 0 000 6z"/><path d="M10 2v2M10 16v2M2 10h2M16 10h2"/>',               mode:null },
+    { id:'settings',    label:'Réglages',    svg:'<circle cx="10" cy="10" r="2.5"/><path d="M10 2v2M10 16v2M2 10h2M16 10h2"/>',                          mode:null },
   ]}
 ];
 
-function renderDrawerNav(mode, activeView) {
-  const el = document.getElementById('drawerNavItems');
+function renderDock() {
+  const grid = document.getElementById('dockGrid');
+  const mode = currentMode || 'biz';
+  
+  // Update mode pills
+  document.getElementById('dock-pill-biz').className = 'dock-mode-pill' + (mode==='biz' ? ' active-biz' : '');
+  document.getElementById('dock-pill-hab').className = 'dock-mode-pill' + (mode==='hab' ? ' active-hab' : '');
+  
   let html = '';
-  ALL_SECTIONS.forEach(sec => {
-    html += `<div style="grid-column:1/-1;font-size:.58rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:${sec.color};padding:8px 4px 4px;opacity:.8">${sec.section}</div>`;
+  DOCK_ALL_SECTIONS.forEach(sec => {
+    // Skip sections that don't match mode (but always show Outils)
+    if(sec.mode && sec.mode !== mode) return;
+    
+    html += `<div class="dock-group-lbl ${sec.cls}">${sec.label}</div>`;
     sec.items.forEach(it => {
-      const isActive = it.id === activeView;
-      const modeTag = it.mode ? `<span style="font-size:.5rem;opacity:.5;margin-left:2px">${it.mode==='biz'?'B':'H'}</span>` : '';
-      html += `<div style="display:flex;align-items:center;gap:8px;padding:9px 10px;border-radius:10px;cursor:pointer;background:${isActive?'rgba(255,255,255,.07)':'transparent'};border:1px solid ${isActive?'rgba(255,255,255,.1)':'transparent'};transition:all .15s" 
-        onclick="if('${it.mode}'&&'${it.mode}'!==currentMode)setMode('${it.mode}');bnNav('${it.id}');closeDrawer()">
-        <span style="width:30px;height:30px;border-radius:8px;background:rgba(255,255,255,.05);display:flex;align-items:center;justify-content:center;flex-shrink:0">
-          <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${it.svg}</svg>
-        </span>
-        <span style="font-size:.8rem;font-weight:${isActive?'700':'500'};color:${isActive?'var(--t0)':'var(--t1)'}">${it.label}</span>
+      const isActive = it.id === _dockActiveView;
+      html += `<div class="dock-item${isActive?' active':''}" onclick="dockNav('${it.id}','${it.mode||''}')">
+        <div class="dock-item-icon">
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${it.svg}</svg>
+        </div>
+        <span class="dock-item-lbl">${it.label}</span>
       </div>`;
     });
   });
-  el.innerHTML = html;
+  grid.innerHTML = html;
 }
 
-function bnNav(viewId) {
+function dockNav(viewId, mode) {
+  if(mode && mode !== currentMode) setMode(mode);
   showView(viewId);
-  _currentBnView = viewId;
-  renderBottomNav(currentMode, viewId);
-  renderDrawerNav(currentMode, viewId);
+  _dockActiveView = viewId;
+  closeDock();
+  renderDock();
 }
 
-function openDrawer() {
-  _drawerOpen = true;
-  document.getElementById('drawerOverlay').classList.add('open');
-  const drawer = document.getElementById('bottomDrawer');
-  drawer.classList.add('open');
-  renderDrawerNav(currentMode, _currentBnView);
-  // Sync XP data into drawer
-  syncDrawerXP();
+function toggleDock() {
+  _dockOpen ? closeDock() : openDock();
+}
+
+function openDock() {
+  _dockOpen = true;
+  _dockActiveView = _currentBnView || (currentMode==='biz' ? 'command' : 'today');
+  renderDock();
+  document.getElementById('dockOverlay').classList.add('open');
+  document.getElementById('dockPanel').classList.add('open');
+  document.getElementById('dockTrigger').classList.add('open');
   document.body.style.overflow = 'hidden';
 }
 
-function closeDrawer() {
-  _drawerOpen = false;
-  document.getElementById('drawerOverlay').classList.remove('open');
-  document.getElementById('bottomDrawer').classList.remove('open');
+function closeDock() {
+  _dockOpen = false;
+  document.getElementById('dockOverlay').classList.remove('open');
+  document.getElementById('dockPanel').classList.remove('open');
+  document.getElementById('dockTrigger').classList.remove('open');
   document.body.style.overflow = '';
 }
 
-function syncDrawerXP() {
-  // Mirror the sidebar XP block into the drawer
-  const sLevel = document.getElementById('s-level-badge');
-  const sBar   = document.getElementById('s-xp-bar');
-  const sVal   = document.getElementById('s-xp-val');
-  const sStrk  = document.getElementById('s-streak');
-  if(sLevel) document.getElementById('drawer-level-badge').textContent = sLevel.textContent;
-  if(sBar)   document.getElementById('drawer-xp-bar').style.width = sBar.style.width;
-  if(sVal)   document.getElementById('drawer-xp-val').textContent = sVal.textContent;
-  if(sStrk)  document.getElementById('drawer-streak').textContent = sStrk.textContent;
-}
-
-// Patch setMode to also update bottom nav
-const _origSetMode = setMode;
-setMode = function(mode) {
-  _origSetMode(mode);
-  const defaultView = mode === 'biz' ? 'command' : 'today';
-  _currentBnView = defaultView;
-  renderBottomNav(mode, defaultView);
-  renderDrawerNav(mode, defaultView);
-};
-
-// Patch showView to also update bottom nav highlight
-const _origShowView = showView;
-showView = function(name) {
-  _origShowView(name);
-  if(window.innerWidth <= 900) {
-    _currentBnView = name;
-    renderBottomNav(currentMode, name);
-  }
-};
-
-// Init on load
-(function initBottomNav() {
-  if(window.innerWidth > 900) return;
-  const mode = currentMode || 'biz';
-  const defaultView = mode === 'biz' ? 'command' : 'today';
-  _currentBnView = defaultView;
-  renderBottomNav(mode, defaultView);
-  renderDrawerNav(mode, defaultView);
-})();
-
-// Re-init on resize
-window.addEventListener('resize', () => {
-  if(window.innerWidth <= 900) {
-    renderBottomNav(currentMode, _currentBnView);
-  }
-});
-
-// Swipe down to close drawer
-(function() {
-  let startY = 0;
-  const drawer = document.getElementById('bottomDrawer');
-  drawer.addEventListener('touchstart', e => { startY = e.touches[0].clientY; }, {passive:true});
-  drawer.addEventListener('touchend', e => {
-    const dy = e.changedTouches[0].clientY - startY;
-    if(dy > 60) closeDrawer();
+// Swipe down to close dock panel
+(function(){
+  let _sy = 0;
+  const panel = document.getElementById('dockPanel');
+  panel.addEventListener('touchstart', e=>{ _sy = e.touches[0].clientY; }, {passive:true});
+  panel.addEventListener('touchend', e=>{
+    if(e.changedTouches[0].clientY - _sy > 60) closeDock();
   }, {passive:true});
 })();
+
+// Keep _dockActiveView in sync with showView
+const _origShowViewDock = showView;
+showView = function(name) {
+  _origShowViewDock(name);
+  _dockActiveView = name;
+  _currentBnView = name; // keep backward compat
+};
+
+// Init active view
+(function(){
+  const mode = currentMode || 'biz';
+  _dockActiveView = mode === 'biz' ? 'command' : 'today';
+  _currentBnView = _dockActiveView;
+})();
 </script>
+
+<!-- burger drawer removed — replaced by dock panel above -->
+
+
 </body>
 </html>
