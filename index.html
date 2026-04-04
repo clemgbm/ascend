@@ -51,6 +51,17 @@ h3{font-size:1.15rem;font-weight:700}
 ::-webkit-scrollbar{width:3px;height:3px}
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:var(--s3);border-radius:999px}
+.bn-burger .bn-icon svg{stroke:var(--t0)}
+.bn-burger .bn-label{color:var(--t0)}
+.picker-shortcut{padding:7px 14px;font-size:.8rem;cursor:pointer;color:var(--t1);transition:all .15s}
+.picker-shortcut:hover{background:var(--b0);color:var(--t0)}
+.picker-shortcut.active{background:var(--pg);color:var(--p);font-weight:600}
+.picker-cal-day{width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:6px;cursor:pointer;font-size:.78rem;transition:all .15s}
+.picker-cal-day:hover{background:var(--b1)}
+.picker-cal-day.in-range{background:rgba(124,92,252,.12)}
+.picker-cal-day.start-date,.picker-cal-day.end-date{background:var(--p);color:#fff;font-weight:700}
+.picker-cal-day.today-marker{border:1px solid var(--p)}
+.picker-cal-day.other-month{color:var(--t3);cursor:default}
 
 /* ── LAYOUT ── */
 .app{display:flex;min-height:100vh}
@@ -1490,13 +1501,54 @@ body[data-theme="light"] .modal-box,.modal-sheet{background:var(--s0)}
 <!-- ══ BUSINESS: ANALYTICS ══ -->
 <div class="view" id="view-analytics">
   <div class="topbar">
-    <div class="topbar-left"><h2 data-i18n="view.analytics">Analytics</h2></div>
-    <div class="topbar-right"><button class="btn btn-primary btn-sm" onclick="openModal('modal-add-metric')" data-i18n="analytics.add">+ Métriques</button></div>
+    <div class="topbar-left"><h2 data-i18n="view.analytics">Analytiques</h2></div>
+    <div class="topbar-right">
+      <button class="btn btn-ghost btn-sm" id="analytics-period-btn" onclick="toggleAnalyticsPicker()" style="display:flex;align-items:center;gap:6px;font-family:'DM Mono',monospace;font-size:.75rem">
+        <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="16" height="15" rx="2"/><path d="M14 1v4M6 1v4M2 8h16"/></svg>
+        <span id="analytics-period-label">30 derniers jours</span>
+      </button>
+      <button class="btn btn-primary btn-sm" onclick="openModal('modal-add-metric')">+ Métriques</button>
+    </div>
   </div>
+
+  <!-- Date Picker Dropdown -->
+  <div id="analytics-picker" style="display:none;position:relative;z-index:50;margin-bottom:16px">
+    <div style="background:var(--s1);border:1px solid var(--b1);border-radius:var(--r);box-shadow:var(--shadow-lg);display:flex;gap:0;overflow:hidden;max-width:780px">
+      <!-- Quick shortcuts -->
+      <div style="min-width:160px;border-right:1px solid var(--b0);padding:8px 0">
+        <div onclick="setAnalyticsPeriod('today')" class="picker-shortcut">Aujourd'hui</div>
+        <div onclick="setAnalyticsPeriod('yesterday')" class="picker-shortcut">Hier</div>
+        <div style="height:1px;background:var(--b0);margin:4px 0"></div>
+        <div onclick="setAnalyticsPeriod('7d')" class="picker-shortcut">7 derniers jours</div>
+        <div onclick="setAnalyticsPeriod('30d')" class="picker-shortcut">30 derniers jours</div>
+        <div onclick="setAnalyticsPeriod('90d')" class="picker-shortcut">90 derniers jours</div>
+        <div onclick="setAnalyticsPeriod('365d')" class="picker-shortcut">12 derniers mois</div>
+        <div style="height:1px;background:var(--b0);margin:4px 0"></div>
+        <div onclick="setAnalyticsPeriod('thisMonth')" class="picker-shortcut">Ce mois-ci</div>
+        <div onclick="setAnalyticsPeriod('lastMonth')" class="picker-shortcut">Mois dernier</div>
+        <div onclick="setAnalyticsPeriod('thisYear')" class="picker-shortcut">Cette année</div>
+      </div>
+      <!-- Calendar -->
+      <div style="flex:1;padding:16px">
+        <div style="display:flex;gap:24px;flex-wrap:wrap">
+          <div id="picker-cal-prev" style="min-width:200px"></div>
+          <div id="picker-cal-curr" style="min-width:200px"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;padding-top:12px;border-top:1px solid var(--b0)">
+          <div style="font-size:.78rem;color:var(--t1)" id="picker-range-display">—</div>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-ghost btn-sm" onclick="closeAnalyticsPicker()">Annuler</button>
+            <button class="btn btn-primary btn-sm" onclick="applyAnalyticsPeriod()">Appliquer</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div class="grid-4" id="analytics-kpis"></div>
   <div class="grid-2">
-    <div class="card"><div class="card-title" data-i18n="analytics.funnel">Funnel</div><div id="funnel"></div></div>
-    <div class="card"><div class="card-title" data-i18n="analytics.history">Historique 7j</div><div id="metrics-history"></div></div>
+    <div class="card"><div class="card-title">Funnel</div><div id="funnel"></div></div>
+    <div class="card"><div class="card-title" id="analytics-history-title">Historique</div><div id="metrics-history"></div></div>
   </div>
 </div>
 
@@ -2435,12 +2487,12 @@ body[data-theme="light"] .modal-box,.modal-sheet{background:var(--s0)}
       <div class="recap-phrase" id="recap-phrase"></div>
       <div class="recap-next" id="recap-next"></div>
       <div id="recap-insights"></div>
-      <div class="recap-section-lbl" style="margin-top:18px">Plan d'action</div>
-      <div id="recap-plan-inline" style="margin-bottom:8px"></div>
+
     </div>
     <div class="recap-footer">
       <div class="recap-badge" id="recap-badge">Grade A</div>
       <button class="btn btn-ghost btn-sm" onclick="closeRecap()">Fermer</button>
+      <button class="btn btn-green btn-sm" onclick="closeRecap();showPlanAction()">Plan d'action</button>
     </div>
   </div>
 </div>
@@ -2926,17 +2978,18 @@ function fmtMMSS(s){return`${String(Math.floor(s/60)).padStart(2,'0')}:${String(
 //  MIDNIGHT RESET CHECK
 // ══════════════════════════════════════════════════════
 function checkMidnightReset(){
-  // Check every minute if we've crossed midnight
   const now = new Date();
   const nextMidnight = new Date(now);
   nextMidnight.setDate(nextMidnight.getDate()+1);
-  nextMidnight.setHours(0,0,0,0);
+  nextMidnight.setHours(0,0,10,0); // +10s buffer after midnight
   const msToMidnight = nextMidnight - now;
   setTimeout(() => {
-    // At midnight: force re-render of today view if active
+    // At midnight: clear today's display and re-render
     if(document.getElementById('view-today').classList.contains('active')) renderToday();
+    updateXP();
+    renderCommand && renderCommand();
     checkMidnightReset(); // schedule next
-  }, msToMidnight + 100);
+  }, msToMidnight);
 }
 
 // ══════════════════════════════════════════════════════
@@ -2995,7 +3048,27 @@ function updateClock() {
 // ══════════════════════════════════════════════════════
 function completionPct(dayKey){const h=hState.history[dayKey]||{};const total=hState.habits.length;if(!total)return 0;return Math.round((hState.habits.filter(hb=>h[hb.id]).length/total)*100);}
 function avgPct(days){const vals=days.map(d=>completionPct(d));return Math.round(vals.reduce((a,b)=>a+b,0)/vals.length);}
-function calcStreak(){let streak=0,d=new Date();while(streak<365){const k=keyForDate(d);if(completionPct(k)>=50)streak++;else break;d.setDate(d.getDate()-1);}return streak;}
+function calcStreak(){
+  let streak=0;
+  const now=new Date();
+  const todayK=keyForDate(now);
+  const todayPct=completionPct(todayK);
+  // Start from today if already has progress, otherwise start from yesterday
+  // This way: at 00:00 with 0 habits done, we still count yesterday's streak
+  let d=new Date(now);
+  if(todayPct<50){
+    // Today not yet done — check if yesterday was done to maintain streak
+    d.setDate(d.getDate()-1);
+    const yestK=keyForDate(d);
+    if(completionPct(yestK)<50) return 0; // yesterday not done either, streak is 0
+    streak=0; // today not done yet but yesterday was — streak shows yesterday's count
+    while(streak<365){const k=keyForDate(d);if(completionPct(k)>=50)streak++;else break;d.setDate(d.getDate()-1);}
+    return streak;
+  }
+  // Today is done — count from today
+  while(streak<365){const k=keyForDate(d);if(completionPct(k)>=50)streak++;else break;d.setDate(d.getDate()-1);}
+  return streak;
+}
 function levelInfo(){const xp=hState.xp||0;let lv=0;for(let i=0;i<LEVELS.length;i++){if(xp>=LEVELS[i].min)lv=i;}const cur=LEVELS[lv],next=LEVELS[lv+1],xpIn=xp-cur.min,xpNeed=next?next.min-cur.min:500,progress=Math.min(100,Math.round((xpIn/xpNeed)*100));return{num:lv+1,name:cur.name,emoji:cur.emoji,progress,xpIn,xpNeed};}
 // ══════════════════════════════════════════════════════
 //  MICRO-ANIMATION UTILITIES
@@ -4388,17 +4461,7 @@ function showRecapForDays(weekDays){
   if(best&&best.pct===100)insights.push({icon:'',text:`<strong>${best.h.emoji} ${best.h.name}</strong> est ton point fort.`});
   if(worst&&worst.pct<40)insights.push({icon:'<svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle"><path d="M10 3L2 17h16L10 3z"/><path d="M10 9v4M10 14.5v.5"/></svg>',text:`<strong>${worst.h.emoji} ${worst.h.name}</strong> à ${worst.pct}% — à travailler.`});
   document.getElementById('recap-insights').innerHTML=insights.map(ins=>`<div class="recap-insight"><span style="font-size:1rem;flex-shrink:0">${ins.icon}</span><div style="font-size:.8rem;color:var(--t1);line-height:1.55">${ins.text}</div></div>`).join('');
-  // Plan d'action inline
-  const habitStats=hState.habits.map(h=>{const done=weekDays.filter(({key})=>hState.history[key]&&hState.history[key][h.id]).length;return{h,done,pct:Math.round((done/7)*100)};});
-  const sortedH=[...habitStats].sort((a,b)=>a.pct-b.pct);
-  const planItems=[];
-  if(sortedH.length>0&&sortedH[0].pct<70)planItems.push(`<div class="plan-item"><div class="plan-item-num" style="background:var(--g)"></div><div class="plan-item-body"><strong>${sortedH[0].h.emoji} ${sortedH[0].h.name}</strong> : bloque un créneau fixe chaque jour.</div></div>`);
-  if(sortedH.length>0&&sorted[0]&&sorted[0].pct>=80)planItems.push(`<div class="plan-item"><div class="plan-item-num" style="background:var(--g)"></div><div class="plan-item-body"><strong>${sorted[0].h.emoji} ${sorted[0].h.name}</strong> est ton ancre — enchaîne une habitude difficile juste après.</div></div>`);
-  if(streak<7)planItems.push(`<div class="plan-item"><div class="plan-item-num" style="background:var(--g)"></div><div class="plan-item-body">Atteins <strong>7 jours de streak</strong>. Fais au moins 1 habitude par jour.</div></div>`);
-  const highTasks=bState.tasks.filter(t=>!t.done&&t.priority==='high').slice(0,3);
-  highTasks.forEach(t=>planItems.push(`<div class="plan-item"><div class="plan-item-num" style="background:var(--p)"></div><div class="plan-item-body"><strong>${t.title}</strong> — priorité haute</div></div>`));
-  if(!highTasks.length)planItems.push(`<div class="plan-item"><div class="plan-item-num" style="background:var(--p)"></div><div class="plan-item-body">Définis 3 tâches haute priorité pour cette semaine.</div></div>`);
-  document.getElementById('recap-plan-inline').innerHTML=planItems.join('')||'<div style="font-size:.8rem;color:var(--t2)">Aucune action à afficher.</div>';
+
   document.getElementById('recapModal').classList.add('open');
 }
 function closeRecap(){document.getElementById('recapModal').classList.remove('open');}
@@ -4689,10 +4752,131 @@ function delCampaign(id){bState.campaigns=bState.campaigns.filter(c=>c.id!==id);
 
 // Analytics
 function saveMetric(){const date=document.getElementById('m-date').value||todayKey();const existing=bState.metrics.findIndex(m=>m.date===date);const metric={date,visitors:parseInt(document.getElementById('m-visitors').value)||0,orders:parseInt(document.getElementById('m-orders').value)||0,revenue:parseFloat(document.getElementById('m-revenue').value)||0,adspend:parseFloat(document.getElementById('m-adspend').value)||0};if(existing>=0)bState.metrics[existing]={...bState.metrics[existing],...metric};else bState.metrics.push({id:'m'+Date.now(),...metric});saveB();closeModal('modal-add-metric');renderAnalytics();toast('Métriques enregistrées ✓','var(--g)');}
+// Analytics period state
+let _analyticsPeriod = {start: null, end: null, label: '30 derniers jours'};
+let _pickerTempStart = null, _pickerTempEnd = null;
+let _pickerViewMonth = new Date();
+
+function initAnalyticsPeriod(){
+  if(!_analyticsPeriod.start){
+    const end = new Date(); end.setHours(0,0,0,0);
+    const start = new Date(end); start.setDate(start.getDate()-29);
+    _analyticsPeriod = {start: keyForDate(start), end: keyForDate(end), label: '30 derniers jours'};
+  }
+}
+
+function toggleAnalyticsPicker(){
+  const el = document.getElementById('analytics-picker');
+  if(el.style.display==='none'){
+    _pickerTempStart = _analyticsPeriod.start;
+    _pickerTempEnd = _analyticsPeriod.end;
+    _pickerViewMonth = new Date();
+    renderPickerCals();
+    el.style.display='';
+  } else {
+    el.style.display='none';
+  }
+}
+
+function closeAnalyticsPicker(){
+  document.getElementById('analytics-picker').style.display='none';
+}
+
+function setAnalyticsPeriod(preset){
+  const today = new Date(); today.setHours(0,0,0,0);
+  let start = new Date(today), end = new Date(today), label = '';
+  if(preset==='today'){label="Aujourd'hui";}
+  else if(preset==='yesterday'){start.setDate(start.getDate()-1);end.setDate(end.getDate()-1);label='Hier';}
+  else if(preset==='7d'){start.setDate(start.getDate()-6);label='7 derniers jours';}
+  else if(preset==='30d'){start.setDate(start.getDate()-29);label='30 derniers jours';}
+  else if(preset==='90d'){start.setDate(start.getDate()-89);label='90 derniers jours';}
+  else if(preset==='365d'){start.setDate(start.getDate()-364);label='12 derniers mois';}
+  else if(preset==='thisMonth'){start=new Date(today.getFullYear(),today.getMonth(),1);label='Ce mois-ci';}
+  else if(preset==='lastMonth'){start=new Date(today.getFullYear(),today.getMonth()-1,1);end=new Date(today.getFullYear(),today.getMonth(),0);label='Mois dernier';}
+  else if(preset==='thisYear'){start=new Date(today.getFullYear(),0,1);label='Cette année';}
+  _analyticsPeriod = {start: keyForDate(start), end: keyForDate(end), label};
+  document.getElementById('analytics-period-label').textContent=label;
+  closeAnalyticsPicker();
+  renderAnalytics();
+}
+
+function applyAnalyticsPeriod(){
+  if(!_pickerTempStart||!_pickerTempEnd)return;
+  const s = _pickerTempStart <= _pickerTempEnd ? _pickerTempStart : _pickerTempEnd;
+  const e = _pickerTempStart <= _pickerTempEnd ? _pickerTempEnd : _pickerTempStart;
+  const label = fmtDate(s) + ' — ' + fmtDate(e);
+  _analyticsPeriod = {start: s, end: e, label};
+  document.getElementById('analytics-period-label').textContent=label;
+  closeAnalyticsPicker();
+  renderAnalytics();
+}
+
+function renderPickerCals(){
+  const now = new Date(_pickerViewMonth);
+  const prev = new Date(now.getFullYear(), now.getMonth()-1, 1);
+  document.getElementById('picker-cal-prev').innerHTML = buildPickerCal(prev);
+  document.getElementById('picker-cal-curr').innerHTML = buildPickerCal(now);
+  updatePickerRangeDisplay();
+}
+
+function buildPickerCal(date){
+  const y=date.getFullYear(), m=date.getMonth();
+  const monthName = new Date(y,m,1).toLocaleDateString('fr-FR',{month:'long',year:'numeric'});
+  const firstDay = (new Date(y,m,1).getDay()+6)%7;
+  const lastDate = new Date(y,m+1,0).getDate();
+  const todayK = todayKey();
+  let html = `<div style="font-weight:700;font-size:.8rem;text-align:center;margin-bottom:8px;color:var(--t0)">${monthName}</div>`;
+  html += `<div style="display:grid;grid-template-columns:repeat(7,28px);gap:2px">`;
+  ['Lu','Ma','Me','Je','Ve','Sa','Di'].forEach(d=>{ html+=`<div style="text-align:center;font-size:.65rem;color:var(--t2);font-weight:700;height:20px;display:flex;align-items:center;justify-content:center">${d}</div>`; });
+  for(let i=0;i<firstDay;i++) html+=`<div></div>`;
+  for(let d=1;d<=lastDate;d++){
+    const k=`${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    let cls='picker-cal-day';
+    if(k===_pickerTempStart||k===_pickerTempEnd) cls+=' start-date';
+    else if(_pickerTempStart&&_pickerTempEnd&&k>Math.min(_pickerTempStart,_pickerTempEnd)&&k<Math.max(_pickerTempStart,_pickerTempEnd)) cls+=' in-range';
+    if(k===todayK) cls+=' today-marker';
+    html+=`<div class="${cls}" onclick="pickerClickDay('${k}')">${d}</div>`;
+  }
+  html+=`</div>`;
+  return html;
+}
+
+function pickerClickDay(k){
+  if(!_pickerTempStart||(_pickerTempStart&&_pickerTempEnd)){
+    _pickerTempStart=k; _pickerTempEnd=null;
+  } else {
+    _pickerTempEnd=k;
+  }
+  renderPickerCals();
+}
+
+function updatePickerRangeDisplay(){
+  const el=document.getElementById('picker-range-display');
+  if(!el)return;
+  if(_pickerTempStart&&_pickerTempEnd){
+    const s=_pickerTempStart<=_pickerTempEnd?_pickerTempStart:_pickerTempEnd;
+    const e=_pickerTempStart<=_pickerTempEnd?_pickerTempEnd:_pickerTempStart;
+    el.textContent=fmtDate(s)+' — '+fmtDate(e);
+  } else if(_pickerTempStart){
+    el.textContent=fmtDate(_pickerTempStart)+' — ...';
+  } else {
+    el.textContent='—';
+  }
+}
+
+function getDatesInRange(start, end){
+  const dates=[], s=new Date(start+'T12:00:00'), e=new Date(end+'T12:00:00');
+  const cur=new Date(s);
+  while(cur<=e){dates.push(keyForDate(cur));cur.setDate(cur.getDate()+1);}
+  return dates;
+}
+
 function renderAnalytics(){
+  initAnalyticsPeriod();
   const hasShopify=!!localStorage.getItem('gabos_shopify_token');
-  const dynDays=hasShopify?30:7;
-  const C=getCurrency();const dynDates=getLast(dynDays);const recent=bState.metrics.filter(m=>dynDates.includes(m.date));const totalRev=recent.reduce((s,m)=>s+m.revenue,0),totalOrders=recent.reduce((s,m)=>s+m.orders,0),totalVisitors=recent.reduce((s,m)=>s+m.visitors,0),totalAds=recent.reduce((s,m)=>s+m.adspend,0);const cvr=totalVisitors>0?((totalOrders/totalVisitors)*100).toFixed(2):0;
+  const dynDates = getDatesInRange(_analyticsPeriod.start, _analyticsPeriod.end);
+  const dynDays = dynDates.length;
+  const C=getCurrency();const recent=bState.metrics.filter(m=>dynDates.includes(m.date));const totalRev=recent.reduce((s,m)=>s+m.revenue,0),totalOrders=recent.reduce((s,m)=>s+m.orders,0),totalVisitors=recent.reduce((s,m)=>s+m.visitors,0),totalAds=recent.reduce((s,m)=>s+m.adspend,0);const cvr=totalVisitors>0?((totalOrders/totalVisitors)*100).toFixed(2):0;
   document.getElementById('analytics-kpis').innerHTML=`<div class="kpi-card" style="--kpi-c:var(--g)"><div class="kpi-lbl">CA 7j</div><div class="kpi-val" id="ankpi-ca" style="color:var(--g)">0${C}</div></div><div class="kpi-card" style="--kpi-c:var(--p)"><div class="kpi-lbl">Commandes</div><div class="kpi-val" id="ankpi-orders" style="color:var(--p)">0</div></div><div class="kpi-card" style="--kpi-c:var(--blue)"><div class="kpi-lbl">Visiteurs</div><div class="kpi-val" id="ankpi-vis" style="color:var(--blue);font-size:1.4rem">0</div></div><div class="kpi-card" style="--kpi-c:var(--gold)"><div class="kpi-lbl">CVR</div><div class="kpi-val" id="ankpi-cvr" style="color:var(--gold)">0%</div></div>`;
   requestAnimationFrame(()=>{
     const el=id=>document.getElementById(id);
@@ -4703,7 +4887,9 @@ function renderAnalytics(){
   });
   document.getElementById('funnel').innerHTML=totalVisitors?`<div style="padding:8px 0"><div style="background:rgba(56,189,248,.2);border-radius:6px;padding:8px 12px;margin-bottom:6px;font-size:.82rem"><svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle"><circle cx="7" cy="7" r="3"/><circle cx="13" cy="7" r="3"/><path d="M1 17c0-3 2.7-5 6-5M13 12c3.3 0 6 2 6 5"/><path d="M7 12c3.3 0 6 2 6 5H1c0-3 2.7-5 6-5z"/></svg> ${totalVisitors} visiteurs</div><div style="background:rgba(124,92,252,.2);border-radius:6px;padding:8px 12px;margin-bottom:6px;font-size:.82rem"><svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle"><path d="M2 3h2l2.5 9h9L18 6H6"/><circle cx="8" cy="17" r="1.5"/><circle cx="15" cy="17" r="1.5"/></svg> ${totalOrders} commandes (${cvr}%)</div><div style="background:rgba(0,229,160,.2);border-radius:6px;padding:8px 12px;font-size:.82rem"><svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle"><circle cx="10" cy="10" r="7"/><path d="M10 6v1m0 6v1M8 9.5h3a1 1 0 010 2H9a1 1 0 000 2h3"/></svg> ${totalRev.toFixed(0)}${C} revenus</div></div>`:'<div class="empty-state">Ajoute des métriques</div>';
   const allHistMetrics=bState.metrics.filter(m=>dynDates.includes(m.date)).sort((a,b)=>b.date>a.date?1:-1);
-  document.getElementById('metrics-history').innerHTML=allHistMetrics.slice(0,30).map(m=>`<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--b0);font-size:.8rem"><span style="color:var(--t1)">${fmtDate(m.date)}</span><span style="color:var(--g)">${m.revenue.toFixed(0)}${C}</span><span class="tag tag-g">${m.orders} cmd</span></div>`).join('')||'<div class="empty-state">Aucune métrique</div>';
+  document.getElementById('metrics-history').innerHTML=allHistMetrics.map(m=>`<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--b0);font-size:.8rem"><span style="color:var(--t1)">${fmtDate(m.date)}</span><span style="color:var(--g)">${m.revenue.toFixed(0)}${C}</span><span class="tag tag-g">${m.orders} cmd</span></div>`).join('')||'<div class="empty-state">'+(hasShopify?'Sync Shopify en attente...':'Ajoute des métriques')+'</div>';
+  const histTitle=document.getElementById('analytics-history-title');
+  if(histTitle)histTitle.textContent='Historique — '+_analyticsPeriod.label;
 }
 
 // Tasks
@@ -6156,29 +6342,22 @@ setInterval(()=>{
   </div>
 </nav>
 
-<!-- ══ MORE DRAWER (bottom sheet) ══ -->
+<!-- ══ BURGER MENU DRAWER ══ -->
 <div class="bottom-drawer-overlay" id="drawerOverlay" onclick="closeDrawer()"></div>
-<div class="bottom-drawer" id="bottomDrawer">
+<div class="bottom-drawer" id="bottomDrawer" style="max-height:85vh;overflow-y:auto">
   <div class="drawer-handle"></div>
 
-  <!-- Mode switcher inside drawer -->
-  <div class="drawer-mode-section">
-    <div class="drawer-mode-lbl">Mode</div>
-    <div class="drawer-mode-switcher">
-      <div class="drawer-mode-pill" id="drawer-pill-biz" onclick="setMode('biz');closeDrawer()">
-        <svg viewBox="0 0 20 20"><path d="M10 3L4 11h5v6h2v-6h5L10 3z"/></svg> Business
-      </div>
-      <div class="drawer-mode-pill" id="drawer-pill-hab" onclick="setMode('hab');closeDrawer()">
-        <svg viewBox="0 0 20 20"><path d="M10 2c0 0-7 4-7 9a7 7 0 0014 0c0-5-7-9-7-9z"/></svg> Habitudes
-      </div>
-    </div>
+  <!-- Header -->
+  <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 16px 12px">
+    <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:.9rem;background:linear-gradient(135deg,var(--p),var(--pk));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">ASCEND</div>
+    <button onclick="closeDrawer()" style="background:var(--b0);border:none;color:var(--t1);width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:1rem">✕</button>
   </div>
 
-  <!-- Extra nav items (everything not in the 4 main tabs) -->
-  <div class="drawer-nav-section" id="drawerNavItems"></div>
+  <!-- All sections grid -->
+  <div style="padding:0 12px 12px;display:grid;grid-template-columns:1fr 1fr;gap:8px" id="drawerNavItems"></div>
 
   <!-- XP block -->
-  <div class="drawer-xp-block" style="margin-bottom:16px">
+  <div class="drawer-xp-block" style="margin:0 12px 16px">
     <div class="level-badge" id="drawer-level-badge"><svg width="12" height="12" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 18V10M10 10C10 10 6 6 3 4c5-2 7 2 7 6M10 10c0 0 4-4 7-6-2 5-7 6-7 6"/></svg> Niveau 1</div>
     <div class="xp-bar-bg"><div class="xp-bar-fill" id="drawer-xp-bar" style="width:0%"></div></div>
     <div class="xp-lbl"><span id="drawer-xp-val">0 / 100 XP</span></div>
@@ -6197,15 +6376,15 @@ const BIZ_TABS = [
   { id:'finance',  label:'Finance',  svg:'<rect x="2" y="12" width="4" height="6" rx="1"/><rect x="8" y="8" width="4" height="10" rx="1"/><rect x="14" y="4" width="4" height="14" rx="1"/>' },
   { id:'tasks',    label:'Tâches',   svg:'<path d="M9 5h8M9 10h8M9 15h8M4 5l1 1 2-2M4 10l1 1 2-2M4 15l1 1 2-2"/>' },
   { id:'coach',    label:'AI Coach', svg:'<rect x="3" y="5" width="14" height="10" rx="2"/><path d="M7 9h6M7 12h4"/><path d="M10 15v2"/>' },
-  { id:'__more__', label:'Plus',     svg:'<circle cx="5" cy="10" r="1.2"/><circle cx="10" cy="10" r="1.2"/><circle cx="15" cy="10" r="1.2"/>' }
+  { id:'__burger__', label:'Menu',   svg:'<path d="M3 5h14M3 10h14M3 15h14"/>' }
 ];
 
 const HAB_TABS = [
-  { id:'today',    label:'Aujourd\'hui', svg:'<circle cx="10" cy="10" r="4"/><path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.2 4.2l1.4 1.4M14.4 14.4l1.4 1.4M4.2 15.8l1.4-1.4M14.4 5.6l1.4-1.4"/>' },
+  { id:'today',    label:"Aujourd'hui", svg:'<circle cx="10" cy="10" r="4"/><path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.2 4.2l1.4 1.4M14.4 14.4l1.4 1.4M4.2 15.8l1.4-1.4M14.4 5.6l1.4-1.4"/>' },
   { id:'calendar', label:'Agenda',       svg:'<rect x="3" y="4" width="14" height="13" rx="2"/><path d="M3 8h14M7 2v4M13 2v4"/>' },
   { id:'focus',    label:'Focus',        svg:'<circle cx="10" cy="10" r="7"/><path d="M10 7v3l2 2"/>' },
   { id:'stats',    label:'Stats',        svg:'<polyline points="3,16 7,10 11,13 17,7"/>' },
-  { id:'__more__', label:'Plus',         svg:'<circle cx="5" cy="10" r="1.2"/><circle cx="10" cy="10" r="1.2"/><circle cx="15" cy="10" r="1.2"/>' }
+  { id:'__burger__', label:'Menu',       svg:'<path d="M3 5h14M3 10h14M3 15h14"/>' }
 ];
 
 // Extra items shown in drawer (everything not in main tabs)
@@ -6238,10 +6417,10 @@ function renderBottomNav(mode, activeView) {
   const tabs = mode === 'biz' ? BIZ_TABS : HAB_TABS;
   const inner = document.getElementById('bottomNavInner');
   inner.innerHTML = tabs.map(t => {
-    const isMore = t.id === '__more__';
-    const isActive = !isMore && t.id === activeView;
-    return `<button class="bn-tab${isActive ? ' active' : ''}" 
-      onclick="${isMore ? 'openDrawer()' : `bnNav('${t.id}')`}"
+    const isBurger = t.id === '__burger__';
+    const isActive = !isBurger && t.id === activeView;
+    return `<button class="bn-tab${isActive ? ' active' : ''}${isBurger ? ' bn-burger' : ''}" 
+      onclick="${isBurger ? 'openDrawer()' : `bnNav('${t.id}')`}"
       aria-label="${t.label}">
       <span class="bn-icon">
         <svg viewBox="0 0 20 20">${t.svg}</svg>
@@ -6252,25 +6431,54 @@ function renderBottomNav(mode, activeView) {
   _currentBnView = activeView;
 }
 
-function renderDrawerNav(mode, activeView) {
-  const items = mode === 'biz' ? BIZ_DRAWER : HAB_DRAWER;
-  const el = document.getElementById('drawerNavItems');
-  el.innerHTML = items.map(it => {
-    if (it.group) return `<div class="drawer-nav-group">${it.group}</div>`;
-    const isActive = it.id === activeView;
-    return `<div class="drawer-nav-item${isActive ? ' active' : ''}" onclick="bnNav('${it.id}');closeDrawer()">
-      <span class="drawer-nav-icon">
-        <svg viewBox="0 0 20 20">${it.svg}</svg>
-      </span>
-      <span>${it.label}</span>
-    </div>`;
-  }).join('');
+// All sections for burger menu
+const ALL_SECTIONS = [
+  { section: 'Business', color: 'var(--p)', items: [
+    { id:'command',     label:'Home',        svg:'<path d="M10 3L4 11h5v6h2v-6h5L10 3z"/>',                                                mode:'biz' },
+    { id:'finance',     label:'Finance',     svg:'<rect x="2" y="12" width="4" height="6" rx="1"/><rect x="8" y="8" width="4" height="10" rx="1"/><rect x="14" y="4" width="4" height="14" rx="1"/>', mode:'biz' },
+    { id:'strategy',    label:'Stratégie',   svg:'<circle cx="10" cy="10" r="7"/><circle cx="10" cy="10" r="3"/><path d="M10 3v2M10 15v2M3 10h2M15 10h2"/>', mode:'biz' },
+    { id:'products',    label:'Produits',    svg:'<path d="M10 2l1.5 4.5H16l-3.5 2.5 1.5 4.5L10 11l-4 2.5 1.5-4.5L4 6.5h4.5L10 2z"/>',  mode:'biz' },
+    { id:'ads',         label:'Pub',         svg:'<path d="M3 7h8l4-3v12l-4-3H3V7z"/><path d="M15 9a2 2 0 010 2"/>',                      mode:'biz' },
+    { id:'analytics',   label:'Analytics',   svg:'<polyline points="3,14 7,9 11,11 17,5"/><polyline points="13,5 17,5 17,9"/>',             mode:'biz' },
+    { id:'clients',     label:'Clients',     svg:'<circle cx="7" cy="7" r="3"/><circle cx="13" cy="7" r="3"/><path d="M1 17c0-3 2.7-5 6-5M13 12c3.3 0 6 2 6 5"/>', mode:'biz' },
+    { id:'tasks',       label:'Tâches',      svg:'<path d="M9 5h8M9 10h8M9 15h8M4 5l1 1 2-2M4 10l1 1 2-2M4 15l1 1 2-2"/>',               mode:'biz' },
+  ]},
+  { section: 'Habitudes', color: 'var(--g)', items: [
+    { id:'today',       label:"Aujourd'hui", svg:'<circle cx="10" cy="10" r="4"/><path d="M10 2v2M10 16v2M2 10h2M16 10h2"/>',             mode:'hab' },
+    { id:'calendar',    label:'Agenda',      svg:'<rect x="3" y="4" width="14" height="13" rx="2"/><path d="M3 8h14M7 2v4M13 2v4"/>',     mode:'hab' },
+    { id:'focus',       label:'Focus',       svg:'<circle cx="10" cy="10" r="7"/><path d="M10 7v3l2 2"/>',                                 mode:'hab' },
+    { id:'stats',       label:'Stats',       svg:'<polyline points="3,16 7,10 11,13 17,7"/>',                                              mode:'hab' },
+    { id:'objectives',  label:'Objectifs',   svg:'<path d="M4 4v12l6-3 6 3V4z"/>',                                                        mode:'hab' },
+    { id:'rewards',     label:'Récompenses', svg:'<path d="M10 2l2 4h4l-3 3 1 4-4-2-4 2 1-4-3-3h4z"/>',                                  mode:'hab' },
+    { id:'manage',      label:'Gérer',       svg:'<path d="M3 6h14M3 10h14M3 14h8"/><path d="M15 11l4 4-4 4"/>',                         mode:'hab' },
+  ]},
+  { section: 'Outils', color: 'var(--gold)', items: [
+    { id:'coach',       label:'AI Coach',    svg:'<rect x="3" y="5" width="14" height="10" rx="2"/><path d="M7 9h6M7 12h4"/><path d="M10 15v2"/>', mode:null },
+    { id:'knowledge',   label:'Knowledge',   svg:'<path d="M4 4h12v12a2 2 0 01-2 2H6a2 2 0 01-2-2V4z"/><path d="M8 4v8l2-2 2 2V4"/>',   mode:null },
+    { id:'hub',         label:'Hub liens',   svg:'<path d="M10 13a3 3 0 100-6 3 3 0 000 6z"/><path d="M10 2v2M10 16v2M2 10h2M16 10h2"/>', mode:null },
+    { id:'integrations',label:'Intégrations',svg:'<path d="M12 2H8v4H4l2 2-2 2h4v4h4v-4h4l-2-2 2-2h-4V2z"/>',                           mode:null },
+    { id:'settings',    label:'Paramètres',  svg:'<circle cx="10" cy="10" r="2.5"/><path d="M10 2v2M10 16v2M2 10h2M16 10h2"/>',           mode:null },
+  ]}
+];
 
-  // Update drawer mode pills
-  const pillBiz = document.getElementById('drawer-pill-biz');
-  const pillHab = document.getElementById('drawer-pill-hab');
-  pillBiz.className = 'drawer-mode-pill' + (mode === 'biz' ? ' active-biz' : '');
-  pillHab.className = 'drawer-mode-pill' + (mode === 'hab' ? ' active-hab' : '');
+function renderDrawerNav(mode, activeView) {
+  const el = document.getElementById('drawerNavItems');
+  let html = '';
+  ALL_SECTIONS.forEach(sec => {
+    html += `<div style="grid-column:1/-1;font-size:.58rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:${sec.color};padding:8px 4px 4px;opacity:.8">${sec.section}</div>`;
+    sec.items.forEach(it => {
+      const isActive = it.id === activeView;
+      const modeTag = it.mode ? `<span style="font-size:.5rem;opacity:.5;margin-left:2px">${it.mode==='biz'?'B':'H'}</span>` : '';
+      html += `<div style="display:flex;align-items:center;gap:8px;padding:9px 10px;border-radius:10px;cursor:pointer;background:${isActive?'rgba(255,255,255,.07)':'transparent'};border:1px solid ${isActive?'rgba(255,255,255,.1)':'transparent'};transition:all .15s" 
+        onclick="if('${it.mode}'&&'${it.mode}'!==currentMode)setMode('${it.mode}');bnNav('${it.id}');closeDrawer()">
+        <span style="width:30px;height:30px;border-radius:8px;background:rgba(255,255,255,.05);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${it.svg}</svg>
+        </span>
+        <span style="font-size:.8rem;font-weight:${isActive?'700':'500'};color:${isActive?'var(--t0)':'var(--t1)'}">${it.label}</span>
+      </div>`;
+    });
+  });
+  el.innerHTML = html;
 }
 
 function bnNav(viewId) {
